@@ -105,11 +105,17 @@ def _mask(prev_generated_seq):
     return prev_generated_seq.data.masked_fill_(mask, 0)
 
 def train_batch(input_variable, input_lengths, target_variable, topics, model,
-                teacher_forcing_ratio):
+                teacher_forcing_ratio, is_eval=False):
     loss_list = []
     # Forward propagation
     prev_generated_seq = None
     target_variable_reshaped = target_variable[:, 1:].contiguous().view(-1)
+
+    sentences = []
+    drafts = [[] for _ in range(config.num_exams)]
+    for i, t in zip(input_variable, target_variable):
+        sentences.append((" ".join([vectorizer.idx2word[tok.item()] for tok in i]),
+                          " ".join([vectorizer.idx2word[tok.item()] for tok in t])))
 
     for i in range(config.num_exams):
         topics = topics if config.use_topics else None
@@ -120,13 +126,20 @@ def train_batch(input_variable, input_lengths, target_variable, topics, model,
         decoder_outputs_reshaped = decoder_outputs.view(-1, vocab_size)
         lossi = criterion(decoder_outputs_reshaped, target_variable_reshaped)
         loss_list.append(lossi.item())
-        if model.training:
+        if not is_eval:
             model.zero_grad()
             lossi.backward(retain_graph=True)
             torch.nn.utils.clip_grad_norm_(model.parameters(), config.max_grad_norm)
             optimizer.step()
+        else:
+            for p in prev_generated_seq:
+                drafts[i].append(" ".join([vectorizer.idx2word[tok.item()] for tok in p]))
         prev_generated_seq = torch.squeeze(torch.topk(decoder_outputs, 1, dim=2)[1]).view(-1, decoder_outputs.size(1))
         prev_generated_seq = _mask(prev_generated_seq)
+
+    if is_eval:
+        return loss_list, sentences, drafts
+
     return loss_list
 
 def evaluate(validation_dataset, model, teacher_forcing_ratio):
@@ -137,8 +150,8 @@ def evaluate(validation_dataset, model, teacher_forcing_ratio):
         input_variables = source
         target_variables = target
         # train model
-        loss_list = train_batch(input_variables, input_lengths,
-                                target_variables, topics, model, teacher_forcing_ratio)
+        loss_list, sentences, drafts = train_batch(input_variables, input_lengths,
+                                target_variables, topics, model, teacher_forcing_ratio, is_eval=True)
         num_examples = len(source)
         for i in range(config.num_exams):
             epoch_loss_list[i] += loss_list[i] * num_examples
