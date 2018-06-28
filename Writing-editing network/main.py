@@ -114,8 +114,8 @@ def train_batch(input_variable, input_lengths, target_variable, topics, model,
     sentences = []
     drafts = [[] for _ in range(config.num_exams)]
     for i, t in zip(input_variable, target_variable):
-        sentences.append((" ".join([vectorizer.idx2word[tok.item()] for tok in i]),
-                          " ".join([vectorizer.idx2word[tok.item()] for tok in t])))
+        sentences.append((" ".join([vectorizer.idx2word[tok.item()] for tok in i if tok.item() != 0 and tok.item() != 1 and tok.item() != 2]),
+                          " ".join([vectorizer.idx2word[tok.item()] for tok in t if tok.item() != 0 and tok.item() != 1 and tok.item() != 2])))
 
     for i in range(config.num_exams):
         topics = topics if config.use_topics else None
@@ -131,10 +131,10 @@ def train_batch(input_variable, input_lengths, target_variable, topics, model,
             lossi.backward(retain_graph=True)
             torch.nn.utils.clip_grad_norm_(model.parameters(), config.max_grad_norm)
             optimizer.step()
-        else:
-            for p in prev_generated_seq:
-                drafts[i].append(" ".join([vectorizer.idx2word[tok.item()] for tok in p]))
         prev_generated_seq = torch.squeeze(torch.topk(decoder_outputs, 1, dim=2)[1]).view(-1, decoder_outputs.size(1))
+        if is_eval:
+            for p in prev_generated_seq:
+                drafts[i].append(" ".join([vectorizer.idx2word[tok.item()] for tok in p if tok.item() != 0 and tok.item() != 1 and tok.item() != 2]))
         prev_generated_seq = _mask(prev_generated_seq)
 
     if is_eval:
