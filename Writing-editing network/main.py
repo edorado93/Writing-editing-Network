@@ -142,6 +142,17 @@ def train_batch(input_variable, input_lengths, target_variable, topics, model,
 
     return loss_list
 
+def bleu_scoring(title_and_abstracts, drafts):
+    refs = {}
+    cands = []
+    for i in range(num_exams):
+        cands.append({})
+    for i, ((title, abstract), dr) in enumerate(zip(title_and_abstracts, drafts)):
+        refs[i] = [abstract]
+        for k in range(num_exams):
+            cands[k][i] = dr[k]
+
+
 def evaluate(validation_dataset, model, teacher_forcing_ratio):
     validation_loader = DataLoader(validation_dataset, config.batch_size)
     model.eval()
