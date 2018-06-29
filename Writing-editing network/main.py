@@ -73,6 +73,17 @@ decoder = DecoderRNNFB(vocab_size, embedding, abstracts.abs_len, new_embedding_s
                      n_layers=config.nlayers, rnn_cell=config.cell, bidirectional=config.bidirectional,
                      input_dropout_p=config.dropout, dropout_p=config.dropout)
 model = FbSeq2seq(encoder_title, encoder, context_encoder, decoder)
+
+""" Define the Discriminator model here """
+
+discrim_encoder = None
+discrim_decoder = None
+discrim_model = None
+discrim_criterion = None
+
+""" Ends here """
+
+
 total_params = sum(x.size()[0] * x.size()[1] if len(x.size()) > 1 else x.size()[0] for x in model.parameters())
 print('Model total parameters:', total_params, flush=True)
 
@@ -104,12 +115,48 @@ def _mask(prev_generated_seq):
         mask = mask.cuda()
     return prev_generated_seq.data.masked_fill_(mask, 0)
 
-def train_batch(input_variable, input_lengths, target_variable, topics, model,
-                teacher_forcing_ratio):
+def freeze_generator():
+    for param in model.parameters():
+        param.requires_grad = False
+
+def unfreeze_generator():
+    for param in model.parameters():
+        param.requires_grad = True
+
+def freeze_discriminator():
+    for param in discrim_model.parameters():
+        param.requires_grad = False
+
+def unfreeze_discriminator():
+    for param in discrim_model.parameters():
+        param.requires_grad = True
+
+
+def train_discriminator(input_variable, target_variable, is_eval=False):
+    loss_list = []
+    '''add other return values'''
+    output = discrim_model(input_variable)
+    lossi = discrim_criterion(output, target_variable)
+    loss_list.append(lossi)
+    """ Check if we need this if condition here, since we are freezing the weights anyhow """
+    if not is_eval:
+        discrim_model.zero_grad()
+        lossi.backward(retain_graph=True)
+        optimizer.step()
+
+def train_generator(input_variable, input_lengths, target_variable, topics, model,
+                teacher_forcing_ratio, is_eval=False):
     loss_list = []
     # Forward propagation
     prev_generated_seq = None
     target_variable_reshaped = target_variable[:, 1:].contiguous().view(-1)
+
+    sentences = []
+    drafts = []
+    probabilities = []
+    for i, t in zip(input_variable, target_variable):
+        sentences.append((" ".join([vectorizer.idx2word[tok.item()] for tok in i if tok.item() != 0 and tok.item() != 1 and tok.item() != 2]),
+                          " ".join([vectorizer.idx2word[tok.item()] for tok in t if tok.item() != 0 and tok.item() != 1 and tok.item() != 2])))
 
     for i in range(config.num_exams):
         topics = topics if config.use_topics else None
@@ -118,16 +165,54 @@ def train_batch(input_variable, input_lengths, target_variable, topics, model,
                    target_variable, teacher_forcing_ratio, topics)
 
         decoder_outputs_reshaped = decoder_outputs.view(-1, vocab_size)
-        lossi = criterion(decoder_outputs_reshaped, target_variable_reshaped)
+        prev_generated_seq = torch.squeeze(torch.topk(decoder_outputs, 1, dim=2)[1]).view(-1, decoder_outputs.size(1))
+        if i == 1:
+            log_probabilities = torch.squeeze(torch.topk(decoder_outputs, 1, dim=2)[0]).view(-1, decoder_outputs.size(1))
+            for lp_tensor, p_tensor in zip(log_probabilities, prev_generated_seq):
+                d, pr = [], []
+                for lp, p in zip(lp_tensor, p_tensor):
+                    if p.item() != 0 and p.item() != 1 and p.item() != 2:
+                        d.append(p.item())
+                        pr.append(lp.item())
+                """ 
+                    Drafts has the generated abstracts for the entire batch
+                    Probabilities has the log probabilities for the entire batch
+                """
+                drafts.append(d)
+                probabilities.append(pr)
+
+            """ Call Discriminator, Critic and get the ReINFORCE Loss Term"""
+            reinforce_loss = None
+        else:
+            reinforce_loss = 0
+
+        prev_generated_seq = _mask(prev_generated_seq)
+
+        lossi = criterion(decoder_outputs_reshaped, target_variable_reshaped) + reinforce_loss
         loss_list.append(lossi.item())
-        if model.training:
+        if not is_eval:
             model.zero_grad()
             lossi.backward(retain_graph=True)
             torch.nn.utils.clip_grad_norm_(model.parameters(), config.max_grad_norm)
             optimizer.step()
-        prev_generated_seq = torch.squeeze(torch.topk(decoder_outputs, 1, dim=2)[1]).view(-1, decoder_outputs.size(1))
-        prev_generated_seq = _mask(prev_generated_seq)
-    return loss_list
+
+    return loss_list, sentences, drafts, probabilities
+
+def train_batch(input_variables, input_lengths, target_variables, topics, teacher_forcing_ratio, is_generator):
+    if is_generator:
+        unfreeze_generator()
+        freeze_discriminator()
+        loss_list, sentences, drafts, probabilities = train_generator(input_variables, input_lengths, target_variables, topics, model, teacher_forcing_ratio)
+        return loss_list, sentences, drafts, probabilities
+    else:
+        unfreeze_discriminator()
+        freeze_generator()
+        loss_list, sentences, drafts, probabilities = train_generator(input_variables, input_lengths, target_variables,
+                                                                      topics, model, teacher_forcing_ratio, is_eval=True)
+        """ Mix them with the true data and pass it to the discriminator """
+        output = train_discriminator(input_variables, target_variables)
+        return output
+
 
 def evaluate(validation_dataset, model, teacher_forcing_ratio):
     validation_loader = DataLoader(validation_dataset, config.batch_size)
@@ -163,6 +248,8 @@ def train_epoches(dataset, model, n_epochs, teacher_forcing_ratio):
             input_variables = source
             target_variables = target
             # train model
+
+            """ Change the loss here to only print generator losses """
             loss_list = train_batch(input_variables, input_lengths,
                                target_variables, topics, model, teacher_forcing_ratio)
             # Record average loss
