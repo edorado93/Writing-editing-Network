@@ -69,7 +69,7 @@ class DecoderRNNFB(BaseRNN):
 
         embedded = self.embedding(input_var)
         if context_embedding is not None:
-            embedded = context_embedding.unsqueeze(1).expand_as(embedded) + embedded
+            embedded = torch.cat([context_embedding.expand(-1, embedded.shape[1], -1), embedded], dim=2)
         embedded = self.input_dropout(embedded)
 
         attn = None

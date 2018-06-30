@@ -31,7 +31,7 @@ args = parser.parse_args()
 config = configurations.get_conf(args.conf)
 writer = SummaryWriter("saved_runs/" + config.experiment_name)
 v = vars(args)
-v['save'] = config.experiment_name + '.pkl'
+v['save'] = "models/"+config.experiment_name + '.pkl'
 
 # Set the random seed manually for reproducibility.
 torch.manual_seed(args.seed)
@@ -57,13 +57,19 @@ embedding = nn.Embedding(vocab_size, config.emsize, padding_idx=0)
 if config.pretrained:
     embedding = load_embeddings(embedding, abstracts.vectorizer.word2idx, config.pretrained, config.emsize)
 
-context_encoder = ContextEncoder(config.context_dim, len(vectorizer.context_vectorizer), config.emsize) if config.use_topics else None
+if config.use_topics:
+    context_encoder = ContextEncoder(config.context_dim, len(vectorizer.context_vectorizer), config.emsize)
+    max_topics = abstracts.max_context_length
+    new_embedding_size = max_topics * config.context_dim + config.emsize
+else:
+    context_encoder = None
+    new_embedding_size = config.emsize
 
-encoder_title = EncoderRNN(vocab_size, embedding, abstracts.head_len, config.emsize, input_dropout_p=config.dropout,
+encoder_title = EncoderRNN(vocab_size, embedding, abstracts.head_len, new_embedding_size, input_dropout_p=config.dropout,
                      n_layers=config.nlayers, bidirectional=config.bidirectional, rnn_cell=config.cell)
-encoder = EncoderRNN(vocab_size, embedding, abstracts.abs_len, config.emsize, input_dropout_p=config.dropout, variable_lengths = False,
+encoder = EncoderRNN(vocab_size, embedding, abstracts.abs_len, new_embedding_size, input_dropout_p=config.dropout, variable_lengths = False,
                   n_layers=config.nlayers, bidirectional=config.bidirectional, rnn_cell=config.cell)
-decoder = DecoderRNNFB(vocab_size, embedding, abstracts.abs_len, config.emsize, sos_id=2, eos_id=1,
+decoder = DecoderRNNFB(vocab_size, embedding, abstracts.abs_len, new_embedding_size, sos_id=2, eos_id=1,
                      n_layers=config.nlayers, rnn_cell=config.cell, bidirectional=config.bidirectional,
                      input_dropout_p=config.dropout, dropout_p=config.dropout)
 model = FbSeq2seq(encoder_title, encoder, context_encoder, decoder)

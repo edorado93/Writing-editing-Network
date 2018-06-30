@@ -10,7 +10,6 @@ class ContextEncoder(nn.Module):
 
     def forward(self, topics):
         embedded = self.embedding(topics)
-        transformed = self.transform(embedded)
-        add = torch.sum(transformed, dim=1)
-        non_linearity = self.tanh(add)
+        embedded = embedded.reshape(embedded.shape[0], 1, -1)
+        non_linearity = self.tanh(embedded)
         return non_linearity
