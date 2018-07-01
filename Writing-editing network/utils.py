@@ -182,7 +182,7 @@ class headline2abstractdataset(Dataset):
                 i += 1
         corpus = []
         topics_v = []
-        self.vectorizer.context_vectorizer['algorithm'] = len(self.vectorizer.context_vectorizer)
+        self.vectorizer.context_vectorizer['algorithm'] = 0
         for i in range(len(abstracts)):
             if len(headlines[i]) > 0 and len(abstracts[i]) > 0:
                 h_a_pair = []
