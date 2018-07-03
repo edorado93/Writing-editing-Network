@@ -161,38 +161,37 @@ def bleu_scoring(title_and_abstracts, drafts):
 
     # cands and refs is our input for the BLEU scoring functions.
     scores = []
-    fields = ["Bleu_1", "Bleu_2", "Bleu_3", "Bleu_4", "METEOR", "ROUGE_L"]
-    for i in range(6):
+    fields = ["Bleu_4", "METEOR", "ROUGE_L"]
+    for i in range(3):
         scores.append([])
     for i in range(config.num_exams):
-        final_scores = validation_eval.evaluate(live=True, cand=cands[i], ref=refs)
-        for j in range(6):
+        final_scores = validation_eval.evaluate(live=True, cand=cands[i], ref=refs, verbose=False)
+        for j in range(3):
             scores[j].append(final_scores[fields[j]])
-
-    print("BLEU scores", scores[3])
+    return scores
 
 def evaluate(validation_dataset, model, teacher_forcing_ratio):
     validation_loader = DataLoader(validation_dataset, config.batch_size)
     model.eval()
     epoch_loss_list = [0] * config.num_exams
-    fields = ["Bleu_1", "Bleu_2", "Bleu_3", "Bleu_4", "METEOR", "ROUGE_L"]
-    for i in range(6):
-        scores.append([])
+    title_and_abstracts = []
+    drafts = [[] for _ in range(config.num_exams)]
     for batch_idx, (source, target, input_lengths, topics) in enumerate(validation_loader):
         input_variables = source
         target_variables = target
         # train model
-        loss_list, sentences, drafts = train_batch(input_variables, input_lengths,
+        loss_list, batch_sentences, batch_drafts = train_batch(input_variables, input_lengths,
                                 target_variables, topics, model, teacher_forcing_ratio, is_eval=True)
         num_examples = len(source)
+        title_and_abstracts.extend(batch_sentences)
         for i in range(config.num_exams):
             epoch_loss_list[i] += loss_list[i] * num_examples
+            drafts[i].extend(batch_drafts[i])
 
-        bleu_scoring(sentences, drafts)
-
+    scores = bleu_scoring(title_and_abstracts, drafts)
     for i in range(config.num_exams):
         epoch_loss_list[i] /= float(len(validation_loader.dataset))
-    return epoch_loss_list
+    return epoch_loss_list, scores
 
 def train_epoches(dataset, model, n_epochs, teacher_forcing_ratio):
     train_loader = DataLoader(dataset, config.batch_size)
@@ -234,7 +233,7 @@ def train_epoches(dataset, model, n_epochs, teacher_forcing_ratio):
                                            elapsed * 1000 / config.log_interval, cur_loss),
                     flush=True)
 
-        validation_loss = evaluate(validation_abstracts, model, teacher_forcing_ratio)
+        validation_loss, eval_scores = evaluate(validation_abstracts, model, teacher_forcing_ratio)
         if config.use_topics:
             plot_topical_encoding(vectorizer.context_vectorizer, model.context_encoder.embedding, writer, epoch)
         for i in range(config.num_exams):
@@ -242,9 +241,16 @@ def train_epoches(dataset, model, n_epochs, teacher_forcing_ratio):
             writer.add_scalar('loss/train/train_loss_abstract_'+str(i), training_loss_list[i], epoch)
             writer.add_scalar('loss/valid/validation_loss_abstract_' + str(i), validation_loss[i], epoch)
 
-        print('| end of epoch {:3d} | valid loss {:5.2f},{:5.2f},{:5.2f} | time: {:5.2f}s'.format(epoch, validation_loss[0], validation_loss[1], validation_loss[2],
-                                                                                   (time.time() - epoch_start_time)),
-              flush=True)
+        print('****************** | end of epoch {:3d} | time: {:5.2f}s *********************'.format(epoch,  (time.time() - epoch_start_time)))
+        print("Validation Loss: ")
+        pprint(validation_loss)
+        print("BLEU-4:")
+        pprint(eval_scores[0])
+        print("METEOR:")
+        pprint(eval_scores[1])
+        print("ROUGLE-L:")
+        pprint(eval_scores[2])
+
         if prev_epoch_loss_list[:-1] < validation_loss[:-1]:
             patience += 1
             if patience == config.patience:
