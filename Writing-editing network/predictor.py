@@ -19,7 +19,7 @@ class Predictor(object):
         self.model.eval()
         self.vectorizer = vectorizer
 
-    def predict(self, src_seq, num_exams, topics=None):
+    def predict(self, src_seq, num_exams, topics=None, max_length=None):
         """ Make prediction given `src_seq` as input.
 
         Args:
@@ -41,11 +41,15 @@ class Predictor(object):
                 text.append(3)
 
         if topics:
-            topics = torch.LongTensor(topics)
+            topics = torch.LongTensor(topics).view(1,-1)
             if is_cuda_available:
                 topics = topics.cuda()
         else:
             topics = None
+
+        # If provided by the user, use that, else let it be the default max_length from training data.
+        if max_length:
+            self.model.decoder.max_length = max_length
 
         input_variable = torch.LongTensor(text).view(1, -1)
         if is_cuda_available:
