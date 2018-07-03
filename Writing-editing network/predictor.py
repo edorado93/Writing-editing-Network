@@ -19,16 +19,19 @@ class Predictor(object):
         self.model.eval()
         self.vectorizer = vectorizer
 
-    def predict(self, src_seq, num_exams):
+    def predict(self, src_seq, num_exams, topics=None):
         """ Make prediction given `src_seq` as input.
 
         Args:
+            topics (list): list of topics (max 2) for the title. Use for contextual generation
             src_seq (list): list of tokens in source language
 
         Returns:
             tgt_seq (list): list of tokens in target language as predicted
             by the pre-trained model
         """
+
+        is_cuda_available = torch.cuda.is_available()
         torch.set_grad_enabled(False)
         text = []
         for tok in src_seq:
@@ -37,8 +40,15 @@ class Predictor(object):
             else:
                 text.append(3)
 
+        if topics:
+            topics = torch.LongTensor(topics)
+            if is_cuda_available:
+                topics = topics.cuda()
+        else:
+            topics = None
+
         input_variable = torch.LongTensor(text).view(1, -1)
-        if torch.cuda.is_available():
+        if is_cuda_available:
             input_variable = input_variable.cuda()
 
         input_lengths = torch.LongTensor([len(src_seq)])
@@ -47,7 +57,7 @@ class Predictor(object):
         outputs = []
         for i in range(num_exams):
             _, _, other = \
-                self.model(input_variable, prev_generated_seq, input_lengths)
+                self.model(input_variable, prev_generated_seq, input_lengths, topics=topics)
             length = other['length'][0]
 
             tgt_id_seq = [other['sequence'][di][0].item() for di in range(length)]

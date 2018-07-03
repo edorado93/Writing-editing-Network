@@ -1,4 +1,5 @@
 import torch.nn as nn
+import torch
 import numpy as np
 
 from .baseRNN import BaseRNN
@@ -23,7 +24,7 @@ class EncoderRNN(BaseRNN):
 
         embedded = self.embedding(input_var)
         if context_embedding is not None:
-            embedded = context_embedding.unsqueeze(1).expand_as(embedded) + embedded
+            embedded = torch.cat([context_embedding.expand(-1, embedded.shape[1], -1), embedded], dim=2)
         embedded = self.input_dropout(embedded)
         if self.variable_lengths:
             embedded = nn.utils.rnn.pack_padded_sequence(embedded, input_lengths, batch_first=True)

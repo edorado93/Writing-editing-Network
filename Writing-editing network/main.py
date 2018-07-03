@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 import torch.optim as optim
 import numpy as np
 from torch.backends import cudnn
-from utils import Vectorizer, headline2abstractdataset, load_embeddings
+from utils import Vectorizer, headline2abstractdataset, load_embeddings, plot_topical_encoding
 from seq2seq.fb_seq2seq import FbSeq2seq
 from seq2seq.EncoderRNN import EncoderRNN
 from seq2seq.DecoderRNNFB import DecoderRNNFB
@@ -31,7 +31,7 @@ args = parser.parse_args()
 config = configurations.get_conf(args.conf)
 writer = SummaryWriter("saved_runs/" + config.experiment_name)
 v = vars(args)
-v['save'] = config.experiment_name + '.pkl'
+v['save'] = "models/"+config.experiment_name + '.pkl'
 
 # Set the random seed manually for reproducibility.
 torch.manual_seed(args.seed)
@@ -57,13 +57,19 @@ embedding = nn.Embedding(vocab_size, config.emsize, padding_idx=0)
 if config.pretrained:
     embedding = load_embeddings(embedding, abstracts.vectorizer.word2idx, config.pretrained, config.emsize)
 
-context_encoder = ContextEncoder(config.context_dim, len(abstracts.context_vectorizer), config.emsize)
+if config.use_topics:
+    context_encoder = ContextEncoder(config.context_dim, len(vectorizer.context_vectorizer), config.emsize)
+    max_topics = abstracts.max_context_length
+    new_embedding_size = max_topics * config.context_dim + config.emsize
+else:
+    context_encoder = None
+    new_embedding_size = config.emsize
 
-encoder_title = EncoderRNN(vocab_size, embedding, abstracts.head_len, config.emsize, input_dropout_p=config.dropout,
+encoder_title = EncoderRNN(vocab_size, embedding, abstracts.head_len, new_embedding_size, input_dropout_p=config.dropout,
                      n_layers=config.nlayers, bidirectional=config.bidirectional, rnn_cell=config.cell)
-encoder = EncoderRNN(vocab_size, embedding, abstracts.abs_len, config.emsize, input_dropout_p=config.dropout, variable_lengths = False,
+encoder = EncoderRNN(vocab_size, embedding, abstracts.abs_len, new_embedding_size, input_dropout_p=config.dropout, variable_lengths = False,
                   n_layers=config.nlayers, bidirectional=config.bidirectional, rnn_cell=config.cell)
-decoder = DecoderRNNFB(vocab_size, embedding, abstracts.abs_len, config.emsize, sos_id=2, eos_id=1,
+decoder = DecoderRNNFB(vocab_size, embedding, abstracts.abs_len, new_embedding_size, sos_id=2, eos_id=1,
                      n_layers=config.nlayers, rnn_cell=config.cell, bidirectional=config.bidirectional,
                      input_dropout_p=config.dropout, dropout_p=config.dropout)
 model = FbSeq2seq(encoder_title, encoder, context_encoder, decoder)
@@ -181,13 +187,14 @@ def train_epoches(dataset, model, n_epochs, teacher_forcing_ratio):
                     flush=True)
 
         validation_loss = evaluate(validation_abstracts, model, teacher_forcing_ratio)
-
+        if config.use_topics:
+            plot_topical_encoding(vectorizer.context_vectorizer, model.context_encoder.embedding, writer, epoch)
         for i in range(config.num_exams):
             training_loss_list[i] /= float(epoch_examples_total)
-            writer.add_scalar('data/train_loss_abstract_'+str(i), training_loss_list[i], epoch)
-            writer.add_scalar('data/validation_loss_abstract_' + str(i), validation_loss[i], epoch)
+            writer.add_scalar('loss/train/train_loss_abstract_'+str(i), training_loss_list[i], epoch)
+            writer.add_scalar('loss/valid/validation_loss_abstract_' + str(i), validation_loss[i], epoch)
 
-        print('| end of epoch {:3d} | valid loss {:5.2f} | time: {:5.2f}s'.format(epoch, validation_loss[-1],
+        print('| end of epoch {:3d} | valid loss {:5.2f},{:5.2f},{:5.2f} | time: {:5.2f}s'.format(epoch, validation_loss[0], validation_loss[1], validation_loss[2],
                                                                                    (time.time() - epoch_start_time)),
               flush=True)
         if prev_epoch_loss_list[:-1] < validation_loss[:-1]:
@@ -202,26 +209,6 @@ def train_epoches(dataset, model, n_epochs, teacher_forcing_ratio):
             prev_epoch_loss_list = validation_loss[:]
     return best_model
 
-def predict(load=False, keep_going=False):
-    # predict sentence
-    if load:
-        model.load_state_dict(torch.load(args.save))
-        print("model restored")
-    predictor = Predictor(model, abstracts.vectorizer)
-    count = 1
-    while True:
-        seq_str = input("Type in a source sequence:\n")
-        seq = seq_str.strip().split(' ')
-        num_exams = int(input("Type the number of drafts:\n"))
-        print("\nresult:")
-        outputs = predictor.predict(seq, num_exams)
-        for i in range(num_exams):
-            print(i)
-            print(outputs[i])
-        print('-' * 120)
-        count += 1
-        if not keep_going and count > config.predict_right_after:
-            break
 
 if __name__ == "__main__":
     if args.mode == 0:
@@ -234,9 +221,24 @@ if __name__ == "__main__":
             print('Exiting from training early')
         torch.save(model.state_dict(), args.save)
         print("model saved")
-        predict()
     elif args.mode == 1:
-        predict(load=True, keep_going=True)
+        model.load_state_dict(torch.load(args.save))
+        print("model restored")
+        predictor = Predictor(model, abstracts.vectorizer)
+        count = 1
+        while True:
+            seq_str = input("Type in a source sequence:\n")
+            topics = input("Provide a list of space separated topics:\n").split()
+            seq = seq_str.strip().split(' ')
+            num_exams = int(input("Type the number of drafts:\n"))
+            print("\nresult:")
+            topics = vectorizer.topics_to_index_tensor(topics)
+            outputs = predictor.predict(seq, num_exams, topics=topics)
+            for i in range(num_exams):
+                print(i)
+                print(outputs[i])
+            print('-' * 120)
+            count += 1
     elif args.mode == 2:
         num_exams = 3
         # predict file
