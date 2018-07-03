@@ -41,6 +41,7 @@ if torch.cuda.is_available():
     else:
         torch.cuda.manual_seed(args.seed)
 
+validation_eval = Evaluate()
 cwd = os.getcwd()
 vectorizer = Vectorizer(min_frequency=config.min_freq)
 
@@ -111,8 +112,10 @@ def train_batch(input_variable, input_lengths, target_variable, topics, model,
     prev_generated_seq = None
     target_variable_reshaped = target_variable[:, 1:].contiguous().view(-1)
 
+    # Data structures used to store sentences for measuring BLEU scores.
     sentences = []
     drafts = [[] for _ in range(config.num_exams)]
+    # Iterate over the title and the original abstract and store them as a tuple in the sentences array.
     for i, t in zip(input_variable, target_variable):
         sentences.append((" ".join([vectorizer.idx2word[tok.item()] for tok in i if tok.item() != 0 and tok.item() != 1 and tok.item() != 2]),
                           " ".join([vectorizer.idx2word[tok.item()] for tok in t if tok.item() != 0 and tok.item() != 1 and tok.item() != 2])))
@@ -131,7 +134,11 @@ def train_batch(input_variable, input_lengths, target_variable, topics, model,
             lossi.backward(retain_graph=True)
             torch.nn.utils.clip_grad_norm_(model.parameters(), config.max_grad_norm)
             optimizer.step()
+
+        # Current output of the model. This will be the previously generated abstract for the model.
         prev_generated_seq = torch.squeeze(torch.topk(decoder_outputs, 1, dim=2)[1]).view(-1, decoder_outputs.size(1))
+
+        # If we are in eval mode, obtain words for generated sequences. This will be used for the BLEU score.
         if is_eval:
             for p in prev_generated_seq:
                 drafts[i].append(" ".join([vectorizer.idx2word[tok.item()] for tok in p if tok.item() != 0 and tok.item() != 1 and tok.item() != 2]))
@@ -145,18 +152,32 @@ def train_batch(input_variable, input_lengths, target_variable, topics, model,
 def bleu_scoring(title_and_abstracts, drafts):
     refs = {}
     cands = []
-    for i in range(num_exams):
+    for i in range(config.num_exams):
         cands.append({})
     for i, ((title, abstract), dr) in enumerate(zip(title_and_abstracts, drafts)):
         refs[i] = [abstract]
-        for k in range(num_exams):
+        for k in range(config.num_exams):
             cands[k][i] = dr[k]
 
+    # cands and refs is our input for the BLEU scoring functions.
+    scores = []
+    fields = ["Bleu_1", "Bleu_2", "Bleu_3", "Bleu_4", "METEOR", "ROUGE_L"]
+    for i in range(6):
+        scores.append([])
+    for i in range(config.num_exams):
+        final_scores = validation_eval.evaluate(live=True, cand=cands[i], ref=refs)
+        for j in range(6):
+            scores[j].append(final_scores[fields[j]])
+
+    print("BLEU scores", scores[3])
 
 def evaluate(validation_dataset, model, teacher_forcing_ratio):
     validation_loader = DataLoader(validation_dataset, config.batch_size)
     model.eval()
     epoch_loss_list = [0] * config.num_exams
+    fields = ["Bleu_1", "Bleu_2", "Bleu_3", "Bleu_4", "METEOR", "ROUGE_L"]
+    for i in range(6):
+        scores.append([])
     for batch_idx, (source, target, input_lengths, topics) in enumerate(validation_loader):
         input_variables = source
         target_variables = target
@@ -166,6 +187,9 @@ def evaluate(validation_dataset, model, teacher_forcing_ratio):
         num_examples = len(source)
         for i in range(config.num_exams):
             epoch_loss_list[i] += loss_list[i] * num_examples
+
+        bleu_scoring(sentences, drafts)
+
     for i in range(config.num_exams):
         epoch_loss_list[i] /= float(len(validation_loader.dataset))
     return epoch_loss_list
