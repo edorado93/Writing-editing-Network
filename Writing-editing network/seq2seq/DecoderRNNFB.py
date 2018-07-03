@@ -109,14 +109,31 @@ class DecoderRNNFB(BaseRNN):
             sequence_symbols = []
             lengths = np.array([max_length] * batch_size)
 
+            # 30 percent of the times select a random word, otherwise
+            # select a word that doesn't occur in the last window of 5 words. This
+            # if to avoid repetition and introduce some randomness.
+            def penalise_repetitions(step_output):
+                if random.random() < 0.3:
+                    word_weights = step_output.squeeze().data.div(1.).exp().cpu()
+                    word_idx = torch.multinomial(word_weights, 1)[0]
+                    if step_output.is_cuda:
+                        return word_idx.view(1,1).cuda()
+                    return word_idx.view(1,1)
+
+                symbols = step_output.topk(10)[1].squeeze()
+                previous_window = sequence_symbols[-5:]
+                for s in symbols:
+                    if s not in previous_window:
+                        return s.view(1,1)
+                return symbols[0]
+
             def decode(step, step_output, step_output_state=None, step_attn=None):
                 if step_output_state is not None:
                     decoder_outputs.append(step_output)
                     decoder_output_states.append(step_output_state)
                 ret_dict[DecoderRNNFB.KEY_ATTN_SCORE].append(step_attn)
-                symbols = step_output.topk(1)[1]
+                symbols = penalise_repetitions(step_output)#step_output.topk(1)[1]
                 sequence_symbols.append(symbols)
-
                 eos_batches = symbols.data.eq(self.eos_id)
                 if eos_batches.dim() > 0:
                     eos_batches = eos_batches.cpu().view(-1).numpy()

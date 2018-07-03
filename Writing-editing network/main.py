@@ -228,12 +228,16 @@ if __name__ == "__main__":
         count = 1
         while True:
             seq_str = input("Type in a source sequence:\n")
-            topics = input("Provide a list of space separated topics:\n").split()
+            topics_required = input("Do you want to provide topics?").lower().strip()
+            topics = None
+            if topics_required in ["y", "yes"]:
+                topics = input("Provide a list of comma separated topics:\n").split(',')
+                topics = vectorizer.topics_to_index_tensor(topics)
             seq = seq_str.strip().split(' ')
             num_exams = int(input("Type the number of drafts:\n"))
+            max_length = int(input("Type the number of words to be generated\n"))
             print("\nresult:")
-            topics = vectorizer.topics_to_index_tensor(topics)
-            outputs = predictor.predict(seq, num_exams, topics=topics)
+            outputs = predictor.predict(seq, num_exams, max_length=max_length, topics=topics)
             for i in range(num_exams):
                 print(i)
                 print(outputs[i])
