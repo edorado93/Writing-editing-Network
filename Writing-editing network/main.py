@@ -195,7 +195,7 @@ def evaluate(validation_dataset, model, teacher_forcing_ratio):
 
 def train_epoches(dataset, model, n_epochs, teacher_forcing_ratio):
     train_loader = DataLoader(dataset, config.batch_size)
-    prev_epoch_loss_list = [100] * config.num_exams
+    prev_epoch_loss_list = [0.] * config.num_exams
     patience = 0
     best_model = None
     for epoch in range(1, n_epochs + 1):
@@ -240,6 +240,9 @@ def train_epoches(dataset, model, n_epochs, teacher_forcing_ratio):
             training_loss_list[i] /= float(epoch_examples_total)
             writer.add_scalar('loss/train/train_loss_abstract_'+str(i), training_loss_list[i], epoch)
             writer.add_scalar('loss/valid/validation_loss_abstract_' + str(i), validation_loss[i], epoch)
+            writer.add_scalar('eval_scores/BLEU_' + str(i), eval_scores[0][i], epoch)
+            writer.add_scalar('eval_scores/METEOR_' + str(i), eval_scores[1][i], epoch)
+            writer.add_scalar('eval_scores/ROUGLE_' + str(i), eval_scores[2][i], epoch)
 
         print('****************** | end of epoch {:3d} | time: {:5.2f}s *********************'.format(epoch,  (time.time() - epoch_start_time)))
         print("Validation Loss: ")
@@ -251,7 +254,8 @@ def train_epoches(dataset, model, n_epochs, teacher_forcing_ratio):
         print("ROUGLE-L:")
         pprint(eval_scores[2])
 
-        if prev_epoch_loss_list[:-1] < validation_loss[:-1]:
+        # Use BLEU score as yardstick for early stopping rather than the validation loss.
+        if prev_epoch_loss_list[1] > eval_scores[0][1]:
             patience += 1
             if patience == config.patience:
                 print("Breaking off now. Performance has not improved on validation set since the last",config.patience,"epochs")
@@ -260,7 +264,7 @@ def train_epoches(dataset, model, n_epochs, teacher_forcing_ratio):
             print("Saved best model till now!")
             best_model = copy.deepcopy(model)
             patience = 0
-            prev_epoch_loss_list = validation_loss[:]
+            prev_epoch_loss_list = eval_scores[0][:]
     return best_model
 
 
