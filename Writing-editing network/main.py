@@ -173,23 +173,15 @@ def train_generator(input_variable, input_lengths, target_variable, topics, mode
         decoder_outputs_reshaped = decoder_outputs.view(-1, vocab_size)
         prev_generated_seq = torch.squeeze(torch.topk(decoder_outputs, 1, dim=2)[1]).view(-1, decoder_outputs.size(1))
         prev_generated_seq = _mask(prev_generated_seq)
+
+        log_probabilities = torch.squeeze(torch.topk(decoder_outputs, 1, dim=2)[0]).view(-1, decoder_outputs.size(1))
+        for lp_tensor, p_tensor in zip(log_probabilities, prev_generated_seq):
+            drafts[i].append(p_tensor)
+            probabilities[i].append(lp_tensor)
+
         # Only calculate the reinforce loss the generator is being trained i.e.
         # this is not the eval mode.
         if not is_eval:
-            log_probabilities = torch.squeeze(torch.topk(decoder_outputs, 1, dim=2)[0]).view(-1, decoder_outputs.size(1))
-            for lp_tensor, p_tensor in zip(log_probabilities, prev_generated_seq):
-                d, pr = [], []
-                for lp, p in zip(lp_tensor, p_tensor):
-                    if p.item() != 0 and p.item() != 1 and p.item() != 2:
-                        d.append(p.item())
-                        pr.append(lp.item())
-                """ 
-                    Drafts has the generated abstracts for the entire batch
-                    Probabilities has the log probabilities for the entire batch
-                """
-                drafts[i].append(d)
-                probabilities[i].append(pr)
-
             """ Call Discriminator, Critic and get the ReINFORCE Loss Term"""
             reinforce_loss = None
         else:
@@ -203,7 +195,7 @@ def train_generator(input_variable, input_lengths, target_variable, topics, mode
             torch.nn.utils.clip_grad_norm_(model.parameters(), config.max_grad_norm)
             optimizer.step()
 
-    return loss_list, sentences, drafts, probabilities
+    return loss_list, sentences, drafts
 
 def test_code(dataset):
     load_training_samples_for_shuffling(dataset)
@@ -214,25 +206,29 @@ def train_batch(input_variables, input_lengths, target_variables, topics, teache
     if is_generator:
         unfreeze_generator()
         freeze_discriminator()
-        loss_list, sentences, drafts, probabilities = train_generator(input_variables, input_lengths, target_variables, topics, model, teacher_forcing_ratio)
+        loss_list, sentences, drafts = train_generator(input_variables, input_lengths, target_variables, topics, model, teacher_forcing_ratio)
         return loss_list
     else:
-        unfreeze_discriminator()
+        # unfreeze_discriminator()
         freeze_generator()
-        _, sentences, drafts, probabilities = train_generator(input_variables, input_lengths, target_variables,
+        loss_list, sentences, drafts = train_generator(input_variables, input_lengths, target_variables,
                                                                       topics, model, teacher_forcing_ratio, is_eval=True)
         # Randomly select a batch of data from the actual training set.
-        true_data_batch = random.choice(train_shuffle_samples)
+        _, true_target, _, _ = random.choice(train_shuffle_samples)
         discriminator_input_variables = []
         discriminator_target_variables = []
 
         # Batch size is the same, so we can zip
-        for d, t in zip(drafts[1], true_data_batch):
-            true_source, true_target, true_input_lengths, true_topics = t
+        for d, t in zip(drafts[1], true_target):
+
+            eos_tensor = torch.tensor(1).cuda() if input_variables.is_cuda else torch.tensor(1)
+            d =  torch.cat((d.view(1, -1), eos_tensor.view(1, -1)), dim=1)
+            t = t.view(1, -1)
+
             # Half the number of samples should be from the actual dataset and remaining half from genera
             # -ted samples.
             if random.random() > 0.5:
-                discriminator_input_variables.append(true_target)
+                discriminator_input_variables.append(t)
                 # CONFIRM ? The discriminator should output 1 if the abstract is from the true data
                 discriminator_target_variables.append(1.)
             else:
@@ -240,15 +236,17 @@ def train_batch(input_variables, input_lengths, target_variables, topics, teache
                 # CONFIRM ? The discriminator should output 0 if the abstract is from the generated data
                 discriminator_target_variables.append(0.)
 
-        discriminator_input_variables = torch.tensor(discriminator_input_variables)
-        discriminator_target_variables = torch.tensor(discriminator_target_variables)
+        discriminator_input_variables = torch.stack(discriminator_input_variables)
+        discriminator_target_variables = torch.tensor(discriminator_target_variables).cuda() if input_variables.is_cuda else torch.tensor(discriminator_target_variables)
+        print(discriminator_input_variables.shape, discriminator_target_variables.shape)
         if input_variables.is_cuda:
             discriminator_input_variables = discriminator_input_variables.cuda()
             discriminator_target_variables =discriminator_target_variables.cuda()
 
+        print(discriminator_input_variables.shape, discriminator_target_variables.shape)
         """ Mix them with the true data and pass it to the discriminator """
-        output = train_discriminator(discriminator_input_variables, discriminator_target_variables)
-        return output
+        # output = train_discriminator(discriminator_input_variables, discriminator_target_variables)
+        # return output
 
 
 def evaluate(validation_dataset, model, teacher_forcing_ratio):
@@ -259,7 +257,7 @@ def evaluate(validation_dataset, model, teacher_forcing_ratio):
         input_variables = source
         target_variables = target
         # train model
-        loss_list, _, _, _ = train_generator(input_variables, input_lengths, target_variables,
+        loss_list, _, _ = train_generator(input_variables, input_lengths, target_variables,
                                                               topics, model, teacher_forcing_ratio, is_eval=True)
         num_examples = len(source)
         for i in range(config.num_exams):
@@ -278,6 +276,8 @@ def train_epoches(dataset, model, n_epochs, teacher_forcing_ratio):
     load_training_samples_for_shuffling(dataset)
 
     for epoch in range(1, n_epochs + 1):
+        test_code(dataset)
+        exit(0)
         model.train(True)
         epoch_examples_total = 0
         total_examples = 0
