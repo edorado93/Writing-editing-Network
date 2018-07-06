@@ -10,7 +10,6 @@ class CommonConfig(object):
     min_freq = 5
     num_exams = 3
     log_interval = 1000
-    predict_right_after = 3
     patience = 5
 
 class SmallDatasetWithTopics(CommonConfig):
@@ -152,6 +151,12 @@ class LargeConfig6(LargeDataset):
     pretrained = 'embeddings/complete.vec'
     use_topics = True
     experiment_name = "lg-with-topics-lr-0.0001-WE-300"
+
+def print_config(config):
+    print("[batch_size = {}, dataparallel = {}, epochs = {}, log_interval = {}, patience = {}, relative_data_path = {}, relative_dev_path = {}, emsize = {},context_dim = {}, learning rate = {}, pretrained = {}, use_topics = {}, experiment_name = {}]".format(config.batch_size
+          , config.dataparallel, config.epochs, config.log_interval, config.patience,
+          config.relative_data_path, config.relative_dev_path, config.emsize, config.context_dim,
+          config.lr, config.pretrained, config.use_topics, config.experiment_name), flush=True)
 
 configuration = {
                  "st1": SmallTopicsConfig1(),
