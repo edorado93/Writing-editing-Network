@@ -106,7 +106,7 @@ def _mask(prev_generated_seq):
         mask = mask.cuda()
     return prev_generated_seq.data.masked_fill_(mask, 0)
 
-def train_batch(input_variable, input_lengths, target_variable, topics, model,
+def train_batch(input_variable, input_lengths, target_variable, topics, structure_abstracts, model,
                 teacher_forcing_ratio, is_eval=False):
     loss_list = []
     # Forward propagation
@@ -123,9 +123,10 @@ def train_batch(input_variable, input_lengths, target_variable, topics, model,
 
     for i in range(config.num_exams):
         topics = topics if config.use_topics else None
+        structure_abstracts = structure_abstracts if config.use_structure_information else None
         decoder_outputs, _, other = \
             model(input_variable, prev_generated_seq, input_lengths,
-                   target_variable, teacher_forcing_ratio, topics)
+                   target_variable, teacher_forcing_ratio, topics=topics, structure_abstracts=structure_abstracts)
 
         decoder_outputs_reshaped = decoder_outputs.view(-1, vocab_size)
         lossi = criterion(decoder_outputs_reshaped, target_variable_reshaped)
@@ -177,12 +178,12 @@ def evaluate(validation_dataset, model, teacher_forcing_ratio):
     epoch_loss_list = [0] * config.num_exams
     title_and_abstracts = []
     drafts = [[] for _ in range(config.num_exams)]
-    for batch_idx, (source, target, input_lengths, topics) in enumerate(validation_loader):
+    for batch_idx, (source, target, input_lengths, topics, structure_abstracts) in enumerate(validation_loader):
         input_variables = source
         target_variables = target
         # train model
         loss_list, batch_sentences, batch_drafts = train_batch(input_variables, input_lengths,
-                                target_variables, topics, model, teacher_forcing_ratio, is_eval=True)
+                                target_variables, topics, structure_abstracts, model, teacher_forcing_ratio, is_eval=True)
         num_examples = len(source)
         title_and_abstracts.extend(batch_sentences)
         for i in range(config.num_exams):
@@ -207,12 +208,12 @@ def train_epoches(dataset, model, n_epochs, teacher_forcing_ratio):
         epoch_start_time = start
         total_loss = 0
         training_loss_list = [0] * config.num_exams
-        for batch_idx, (source, target, input_lengths, topics) in enumerate(train_loader):
+        for batch_idx, (source, target, input_lengths, topics, structure_abstracts) in enumerate(train_loader):
             input_variables = source
             target_variables = target
             # train model
             loss_list = train_batch(input_variables, input_lengths,
-                               target_variables, topics, model, teacher_forcing_ratio)
+                               target_variables, topics, structure_abstracts, model, teacher_forcing_ratio)
             # Record average loss
             num_examples = len(source)
             epoch_examples_total += num_examples

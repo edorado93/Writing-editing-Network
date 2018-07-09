@@ -17,14 +17,16 @@ class EncoderRNN(BaseRNN):
         self.rnn = self.rnn_cell(hidden_size, hidden_size, n_layers,
                                  batch_first=True, bidirectional=bidirectional, dropout=dropout_p)
 
-    def forward(self, input_var, input_lengths=None, context_embedding=None):
+    def forward(self, input_var, input_lengths=None, topical_embedding=None, structural_embedding=None):
 
         if input_lengths is not None:
             input_lengths = input_lengths.tolist()
 
         embedded = self.embedding(input_var)
-        if context_embedding is not None:
-            embedded = torch.cat([context_embedding.expand(-1, embedded.shape[1], -1), embedded], dim=2)
+        if topical_embedding is not None:
+            embedded = torch.cat([topical_embedding.expand(-1, embedded.shape[1], -1), embedded], dim=2)
+        if structural_embedding is not None:
+            embedded = torch.cat((embedded, structural_embedding), dim=2)
         embedded = self.input_dropout(embedded)
         if self.variable_lengths:
             embedded = nn.utils.rnn.pack_padded_sequence(embedded, input_lengths, batch_first=True)

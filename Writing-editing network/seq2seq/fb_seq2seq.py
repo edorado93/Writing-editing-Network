@@ -17,24 +17,25 @@ class FbSeq2seq(nn.Module):
         self.decoder.rnn.flatten_parameters()
 
     def forward(self, input_variable, prev_generated_seq=None, input_lengths=None, target_variable=None,
-                teacher_forcing_ratio=0, topics=None):
+                teacher_forcing_ratio=0, topics=None, structure_abstracts=None):
 
-        if topics is not None:
-            context_embedding = self.context_encoder(topics)
+        if topics is not None or structure_abstracts is not None:
+            topical_embedding, structural_embedding = self.context_encoder(topics, structure_abstracts)
         else:
-            context_embedding = None
+            topical_embedding, structural_embedding = None, None
 
-        encoder_outputs, encoder_hidden = self.encoder_title(input_variable, input_lengths, context_embedding=context_embedding)
+        encoder_outputs, encoder_hidden = self.encoder_title(input_variable, input_lengths, topical_embedding=topical_embedding, structural_embedding=structural_embedding)
         if prev_generated_seq is None:
             pg_encoder_states = None
             pg_encoder_hidden = None
         else:
-            pg_encoder_states, pg_encoder_hidden = self.encoder(prev_generated_seq, context_embedding=context_embedding)
+            pg_encoder_states, pg_encoder_hidden = self.encoder(prev_generated_seq, topical_embedding=topical_embedding, structural_embedding=structural_embedding)
         result = self.decoder(inputs=target_variable,
                               encoder_hidden=encoder_hidden,
                               encoder_outputs=encoder_outputs,
                               pg_encoder_states=pg_encoder_states,
                               function=self.decode_function,
                               teacher_forcing_ratio=teacher_forcing_ratio,
-                              context_embedding=context_embedding)
+                              topical_embedding=topical_embedding,
+                              structural_embedding=structural_embedding)
         return result
