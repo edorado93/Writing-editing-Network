@@ -153,6 +153,14 @@ class LargeConfig6(LargeDataset):
     use_topics = True
     experiment_name = "lg-with-topics-lr-0.0001-WE-300"
 
+class RandomConfig(SmallDataset):
+    emsize = 512
+    context_dim = 128
+    lr = 0.0001
+    pretrained = None
+    use_topics = False
+    experiment_name = "random"
+
 configuration = {
                  "st1": SmallTopicsConfig1(),
                  "st2": SmallTopicsConfig2(),
@@ -168,7 +176,8 @@ configuration = {
                  "l3": LargeConfig3(),
                  "l4": LargeConfig4(),
                  "l5": LargeConfig5(),
-                 "l6": LargeConfig6()}
+                 "l6": LargeConfig6(),
+                 "random": RandomConfig()}
 
 def get_conf(name):
     return configuration[name]

@@ -194,7 +194,7 @@ def train_generator(input_variable, input_lengths, target_variable, topics, mode
             gen_log = torch.stack(probabilities[i])
             discrim_input = torch.stack(drafts[i])
             sequence_length = discrim_input.shape[1]
-            print("Log probabilities size is {}, discriminator's input size is {}, sequence length is {}, batch size is {}", gen_log.shape, discrim_input.shape, sequence_length, config.batch_size)
+            print("Log probabilities size is {}, discriminator's input size is {}, sequence length is {}, batch size is {}".format(gen_log.shape, discrim_input.shape, sequence_length, config.batch_size))
             est_values = critic_model(discrim_input)
             dis_out = discrim_model(discrim_input)
             #gen_log is the log probabilities of generator output
