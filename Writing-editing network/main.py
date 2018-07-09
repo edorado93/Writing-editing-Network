@@ -76,7 +76,7 @@ decoder = DecoderRNNFB(vocab_size, embedding, abstracts.abs_len, new_embedding_s
 model = FbSeq2seq(encoder_title, encoder, context_encoder, decoder)
 total_params = sum(x.size()[0] * x.size()[1] if len(x.size()) > 1 else x.size()[0] for x in model.parameters())
 print('Model total parameters:', total_params, flush=True)
-print(configurations.print_config(config))
+configurations.print_config(config)
 
 if config.dataparallel and torch.cuda.device_count() > 1:
     print("Let's use", torch.cuda.device_count(), "GPUs!")
