@@ -97,6 +97,9 @@ if config.dataparallel and torch.cuda.device_count() > 1:
 criterion = nn.CrossEntropyLoss(ignore_index=0)
 if args.cuda:
     model = model.cuda()
+    discrim_model = discrim_model.cuda()
+    critic_model = critic_model.cuda()
+    discrim_criterion = discrim_criterion.cuda()
     criterion = criterion.cuda()
 optimizer = optim.Adam(model.parameters(), lr=config.lr)
 
@@ -191,6 +194,7 @@ def train_generator(input_variable, input_lengths, target_variable, topics, mode
             gen_log = torch.stack(probabilities[i])
             discrim_input = torch.stack(drafts[i])
             sequence_length = discrim_input.shape[1]
+            print("Log probabilities size is {}, discriminator's input size is {}, sequence length is {}, batch size is {}", gen_log.shape, discrim_input.shape, sequence_length, config.batch_size)
             est_values = critic_model(discrim_input)
             dis_out = discrim_model(discrim_input)
             #gen_log is the log probabilities of generator output
@@ -207,11 +211,6 @@ def train_generator(input_variable, input_lengths, target_variable, topics, mode
             optimizer.step()
 
     return loss_list, sentences, drafts
-
-def test_code(dataset):
-    load_training_samples_for_shuffling(dataset)
-    source, target, input_lengths, topics = random.choice(train_shuffle_samples)
-    train_batch(source, input_lengths, target, topics, 1, False)
 
 def train_batch(input_variables, input_lengths, target_variables, topics, teacher_forcing_ratio, is_generator):
     if is_generator:
@@ -285,10 +284,7 @@ def train_epoches(dataset, model, n_epochs, teacher_forcing_ratio):
     # Loads the entire training set into memory. So that we can fetch a random batch to feed to the
     # discriminator while training.
     load_training_samples_for_shuffling(dataset)
-
     for epoch in range(1, n_epochs + 1):
-        test_code(dataset)
-        exit(0)
         model.train(True)
         epoch_examples_total = 0
         total_examples = 0
@@ -304,6 +300,9 @@ def train_epoches(dataset, model, n_epochs, teacher_forcing_ratio):
             # Train the GENERATOR
             loss_list = train_batch(input_variables, input_lengths,
                                target_variables, topics, teacher_forcing_ratio, True)
+
+            print("Generator Trained successfully")
+            exit(0)
 
             # Train the DISCRIMINATOR
             train_batch(input_variables, input_lengths,
