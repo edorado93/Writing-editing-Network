@@ -10,11 +10,7 @@ from seq2seq.fb_seq2seq import FbSeq2seq
 from seq2seq.EncoderRNN import EncoderRNN
 from seq2seq.DecoderRNNFB import DecoderRNNFB
 from seq2seq.ContextEncoder import ContextEncoder
-import discriminator import reinforce
-from discriminator import Encoder
-from discriminator import DecoderRNN
-from discriminator import Discriminator
-from discriminator import Critic
+from seq2seq.discriminator import reinforce, Encoder, DecoderRNN, Discriminator, Critic
 from predictor import Predictor
 from tensorboardX import SummaryWriter
 import configurations
@@ -82,13 +78,11 @@ model = FbSeq2seq(encoder_title, encoder, context_encoder, decoder)
 
 """ Define the Discriminator model here """
 
-discrim_encoder = Encoder(EMBEDDING_DIM, HIDDEN_DIM, vocab_size, batch_size)
-discrim_decoder = DecoderRNN(EMBEDDING_DIM, HIDDEN_DIM, vocab_size, 1, batch_size)
+discrim_encoder = Encoder(config.emsize, config.emsize, vocab_size, config.batch_size)
+discrim_decoder = DecoderRNN(config.emsize, config.emsize, vocab_size, 1, config.batch_size)
 discrim_model = Discriminator(discrim_encoder, discrim_decoder)
 discrim_criterion = nn.BCELoss()
-
-critic_model = Critic(EMBEDDING_DIM, HIDDEN_DIM, vocab_size)
-
+critic_model = Critic(config.emsize, config.emsize, vocab_size)
 
 """ Ends here """
 
@@ -193,7 +187,7 @@ def train_generator(input_variable, input_lengths, target_variable, topics, mode
         if not is_eval:
             """ Call Discriminator, Critic and get the ReINFORCE Loss Term"""
             est_values = critic_model(input)
-            reinforce_loss = reinforce(gen_log, dis_out, est_values, seq_length, CommonConfig())
+            reinforce_loss = reinforce(gen_log, dis_out, est_values, seq_length, config)
         else:
             reinforce_loss = 0
 
