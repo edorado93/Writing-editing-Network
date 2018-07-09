@@ -119,11 +119,11 @@ class Discriminator(nn.Module):
         super(Discriminator, self).__init__()
         self.encoder = encoder
         self.decoder = decoder
+        self.sigmoid = nn.Sigmoid()
 
-    def forward(self, input):
-        e_out, e_hid = encoder(input)
-        dis_out = decoder_train(input, e_hid, decoder, seq_length)
-        m = nn.Sigmoid()
-        dis_sig = m(dis_out)
+    def forward(self, input, seq_length):
+        e_out, e_hid = self.encoder(input)
+        dis_out = decoder_train(input, e_hid, self.decoder, seq_length)
+        dis_sig = self.sigmoid(dis_out)
         return dis_out, dis_sig
 

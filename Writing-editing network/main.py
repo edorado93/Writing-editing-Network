@@ -141,9 +141,10 @@ def unfreeze_discriminator():
 
 
 def train_discriminator(input_variable, target_variable, is_eval=False):
+    sequence_length = input_variable.shape[1]
     loss_list = []
     '''add other return values'''
-    output = discrim_model(input_variable)
+    output = discrim_model(input_variable, sequence_length)
     lossi = discrim_criterion(output, target_variable)
     loss_list.append(lossi)
     """ Check if we need this if condition here, since we are freezing the weights anyhow """
@@ -187,10 +188,13 @@ def train_generator(input_variable, input_lengths, target_variable, topics, mode
         if not is_eval:
             """ Call Discriminator, Critic and get the ReINFORCE Loss Term"""
             #input is the batch_size * sequence length of woord to index of abstracts
-            est_values = critic_model(input)
-            dis_out = discrim_model(input)
+            gen_log = torch.stack(probabilities[i])
+            discrim_input = torch.stack(drafts[i])
+            sequence_length = discrim_input.shape[1]
+            est_values = critic_model(discrim_input)
+            dis_out = discrim_model(discrim_input)
             #gen_log is the log probabilities of generator output
-            reinforce_loss = reinforce(gen_log, dis_out, est_values, seq_length, config)
+            reinforce_loss = reinforce(gen_log, dis_out, est_values, sequence_length, config)
         else:
             reinforce_loss = 0
 
