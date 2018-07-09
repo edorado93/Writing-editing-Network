@@ -186,7 +186,10 @@ def train_generator(input_variable, input_lengths, target_variable, topics, mode
         # this is not the eval mode.
         if not is_eval:
             """ Call Discriminator, Critic and get the ReINFORCE Loss Term"""
+            #input is the batch_size * sequence length of woord to index of abstracts
             est_values = critic_model(input)
+            dis_out = discrim_model(input)
+            #gen_log is the log probabilities of generator output
             reinforce_loss = reinforce(gen_log, dis_out, est_values, seq_length, config)
         else:
             reinforce_loss = 0
