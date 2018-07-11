@@ -82,7 +82,7 @@ discrim_encoder = Encoder(config.emsize, config.emsize, vocab_size, config.batch
 discrim_decoder = DecoderRNN(config.emsize, config.emsize, vocab_size, 1, config.batch_size)
 discrim_model = Discriminator(discrim_encoder, discrim_decoder)
 discrim_criterion = nn.BCELoss()
-critic_model = Critic(config.emsize, config.emsize, vocab_size)
+critic_model = Critic(config.emsize, config.emsize, vocab_size, config.batch_size)
 
 """ Ends here """
 
@@ -147,7 +147,7 @@ def train_discriminator(input_variable, target_variable, is_eval=False):
     sequence_length = input_variable.shape[1]
     loss_list = []
     '''add other return values'''
-    output = discrim_model(input_variable, sequence_length)
+    output = discrim_model(input_variable, sequence_length, config.batch_size)
     lossi = discrim_criterion(output, target_variable)
     loss_list.append(lossi)
     """ Check if we need this if condition here, since we are freezing the weights anyhow """
@@ -190,13 +190,13 @@ def train_generator(input_variable, input_lengths, target_variable, topics, mode
         # this is not the eval mode.
         if not is_eval:
             """ Call Discriminator, Critic and get the ReINFORCE Loss Term"""
-            #input is the batch_size * sequence length of woord to index of abstracts
+            #input is the batch_size * sequence length of word to index of abstracts
             gen_log = torch.stack(probabilities[i])
             discrim_input = torch.stack(drafts[i])
             sequence_length = discrim_input.shape[1]
             print("Log probabilities size is {}, discriminator's input size is {}, sequence length is {}, batch size is {}".format(gen_log.shape, discrim_input.shape, sequence_length, config.batch_size))
             est_values = critic_model(discrim_input)
-            dis_out = discrim_model(discrim_input)
+            dis_out = discrim_model(discrim_input, sequence_length, config.batch_size)
             #gen_log is the log probabilities of generator output
             reinforce_loss = reinforce(gen_log, dis_out, est_values, sequence_length, config)
         else:

@@ -32,15 +32,15 @@ class DecoderRNN(nn.Module):
         self.batch_size = batch_size
 
     def forward(self, input, hidden):
-        output = self.embeddingF(input).view(self.batch_size, 1, -1)
+        output = self.embedding(input).view(self.batch_size, 1, -1)
         output = F.relu(output)
         output, hidden = self.lstm(output, hidden)
         output = self.out((output.view(self.batch_size, 1, -1)))
         output = output.squeeze(2)
         return output, hidden
 
-def decoder_train(input_tensor, encoder_hidden, decoder, seq_length):
-    decoder_input = torch.zeros((2,1), dtype=torch.long)
+def decoder_train(input_tensor, encoder_hidden, decoder, seq_length, batch_size):
+    decoder_input = torch.zeros((batch_size, 1), dtype=torch.long)
     decoder_hidden = encoder_hidden
     decoder_output_f = torch.tensor([])
     for di in range(seq_length):
@@ -51,21 +51,22 @@ def decoder_train(input_tensor, encoder_hidden, decoder, seq_length):
 
 # critic
 class Critic(nn.Module):
-    def __init__(self, embedding_dim, hidden_dim, vocab_size):
+    def __init__(self, embedding_dim, hidden_dim, vocab_size, batch_size):
         super(Critic, self).__init__()
         self.hidden_dim = hidden_dim
+        self.batch_size = batch_size
         self.word_embeddings = nn.Embedding(vocab_size, embedding_dim)
         self.lstm = nn.LSTM(embedding_dim, hidden_dim, batch_first=True)
         self.hidden2tag = nn.Linear(hidden_dim, 1)
         self.hidden = self.init_hidden()
 
     def init_hidden(self):
-        return (torch.zeros(1, 2, self.hidden_dim), torch.zeros(1, 2, self.hidden_dim))
+        return (torch.zeros(1, self.batch_size, self.hidden_dim), torch.zeros(1, self.batch_size, self.hidden_dim))
 
     def forward(self, abstract):
         embeds = self.word_embeddings(abstract)
-        lstm_out, self.hidden = self.lstm(embeds.view(2, len(abstract[0]), -1), self.hidden)
-        out_space = self.hidden2tag(lstm_out.view(2, len(abstract[0]), -1).squeeze(2))
+        lstm_out, self.hidden = self.lstm(embeds.view(self.batch_size, len(abstract[0]), -1), self.hidden)
+        out_space = self.hidden2tag(lstm_out.view(self.batch_size, len(abstract[0]), -1).squeeze(2))
         out_space1 = out_space.squeeze(2)
         return out_space1
 
@@ -121,9 +122,9 @@ class Discriminator(nn.Module):
         self.decoder = decoder
         self.sigmoid = nn.Sigmoid()
 
-    def forward(self, input, seq_length):
+    def forward(self, input, seq_length, batch_size):
         e_out, e_hid = self.encoder(input)
-        dis_out = decoder_train(input, e_hid, self.decoder, seq_length)
+        dis_out = decoder_train(input, e_hid, self.decoder, seq_length, batch_size)
         dis_sig = self.sigmoid(dis_out)
         return dis_out, dis_sig
 
