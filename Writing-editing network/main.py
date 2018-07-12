@@ -78,11 +78,11 @@ model = FbSeq2seq(encoder_title, encoder, context_encoder, decoder)
 
 """ Define the Discriminator model here """
 
-discrim_encoder = Encoder(config.emsize, config.emsize, vocab_size, config.batch_size)
+discrim_encoder = Encoder(config.emsize, config.emsize, vocab_size, config.batch_size, use_cuda=True)
 discrim_decoder = DecoderRNN(config.emsize, config.emsize, vocab_size, 1, config.batch_size)
 discrim_model = Discriminator(discrim_encoder, discrim_decoder)
 discrim_criterion = nn.BCELoss()
-critic_model = Critic(config.emsize, config.emsize, vocab_size, config.batch_size)
+critic_model = Critic(config.emsize, config.emsize, vocab_size, config.batch_size, use_cuda=True)
 
 """ Ends here """
 
@@ -101,7 +101,7 @@ if args.cuda:
     critic_model = critic_model.cuda()
     discrim_criterion = discrim_criterion.cuda()
     criterion = criterion.cuda()
-optimizer = optim.Adam(model.parameters(), lr=config.lr)
+optimizer = optim.Adam(list(model.parameters()) + list(discrim_model.parameters()), lr=config.lr)
 
 # Mask variable
 def _mask(prev_generated_seq):
@@ -196,9 +196,9 @@ def train_generator(input_variable, input_lengths, target_variable, topics, mode
             sequence_length = discrim_input.shape[1]
             print("Log probabilities size is {}, discriminator's input size is {}, sequence length is {}, batch size is {}".format(gen_log.shape, discrim_input.shape, sequence_length, config.batch_size))
             est_values = critic_model(discrim_input)
-            dis_out = discrim_model(discrim_input, sequence_length, config.batch_size)
+            dis_out, dis_sig = discrim_model(discrim_input, sequence_length, config.batch_size)
             #gen_log is the log probabilities of generator output
-            reinforce_loss = reinforce(gen_log, dis_out, est_values, sequence_length, config)
+            reinforce_loss, final_gen_obj = reinforce(gen_log, dis_out, est_values, sequence_length, config)
         else:
             reinforce_loss = 0
 

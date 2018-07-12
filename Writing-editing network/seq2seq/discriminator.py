@@ -4,20 +4,26 @@ import torch.nn.functional as F
 import numpy as np
 
 class Encoder(nn.Module):
-    def __init__(self, embedding_dim, hidden_dim, vocab_size, batch_size):
+    def __init__(self, embedding_dim, hidden_dim, vocab_size, batch_size, use_cuda=False):
         super(Encoder, self).__init__()
         self.hidden_dim = hidden_dim
         self.word_embeddings = nn.Embedding(vocab_size, embedding_dim)
         self.lstm = nn.LSTM(embedding_dim, hidden_dim, batch_first=True)
         self.batch_size = batch_size
-        self.hidden = self.init_hidden()
+        self.use_cuda = use_cuda
 
     def init_hidden(self):
-        return (torch.zeros(1, self.batch_size, self.hidden_dim), torch.zeros(1, self.batch_size, self.hidden_dim))
+        h, c = torch.zeros(1, self.batch_size, self.hidden_dim), torch.zeros(1, self.batch_size, self.hidden_dim)
+        if self.use_cuda:
+            h = h.cuda()
+            c = c.cuda()
+
+        return h, c
 
     def forward(self, abstract):
+        h0, c0 = self.init_hidden()
         embeds = self.word_embeddings(abstract)
-        lstm_out, self.hidden = self.lstm(embeds.view(self.batch_size, len(abstract[0]), -1), self.hidden)
+        lstm_out, self.hidden = self.lstm(embeds, (h0, c0))
         return lstm_out, self.hidden
 
 class DecoderRNN(nn.Module):
@@ -51,21 +57,27 @@ def decoder_train(input_tensor, encoder_hidden, decoder, seq_length, batch_size)
 
 # critic
 class Critic(nn.Module):
-    def __init__(self, embedding_dim, hidden_dim, vocab_size, batch_size):
+    def __init__(self, embedding_dim, hidden_dim, vocab_size, batch_size, use_cuda=False):
         super(Critic, self).__init__()
         self.hidden_dim = hidden_dim
         self.batch_size = batch_size
         self.word_embeddings = nn.Embedding(vocab_size, embedding_dim)
         self.lstm = nn.LSTM(embedding_dim, hidden_dim, batch_first=True)
         self.hidden2tag = nn.Linear(hidden_dim, 1)
-        self.hidden = self.init_hidden()
+        self.use_cuda = use_cuda
 
     def init_hidden(self):
-        return (torch.zeros(1, self.batch_size, self.hidden_dim), torch.zeros(1, self.batch_size, self.hidden_dim))
+        h, c = torch.zeros(1, self.batch_size, self.hidden_dim), torch.zeros(1, self.batch_size, self.hidden_dim)
+        if self.use_cuda:
+            h = h.cuda()
+            c = c.cuda()
+
+        return h, c
 
     def forward(self, abstract):
+        h0, c0 = self.init_hidden()
         embeds = self.word_embeddings(abstract)
-        lstm_out, self.hidden = self.lstm(embeds.view(self.batch_size, len(abstract[0]), -1), self.hidden)
+        lstm_out, self.hidden = self.lstm(embeds, (h0, c0))
         out_space = self.hidden2tag(lstm_out.view(self.batch_size, len(abstract[0]), -1).squeeze(2))
         out_space1 = out_space.squeeze(2)
         return out_space1
