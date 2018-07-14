@@ -145,17 +145,17 @@ def unfreeze_discriminator():
 
 def train_discriminator(input_variable, target_variable, is_eval=False):
     sequence_length = input_variable.shape[1]
-    loss_list = []
     '''add other return values'''
-    output = discrim_model(input_variable, sequence_length, config.batch_size)
-    lossi = discrim_criterion(output, target_variable)
-    loss_list.append(lossi)
+    dis_out, dis_sig = discrim_model(input_variable, sequence_length, config.batch_size)
+    print("Discriminator's output dim is {}, target dim is {}".format(dis_sig.shape, target_variable.shape))
+    loss = discrim_criterion(dis_sig, target_variable)
     """ Check if we need this if condition here, since we are freezing the weights anyhow """
     if not is_eval:
         discrim_model.zero_grad()
-        lossi.backward(retain_graph=True)
+        loss.backward(retain_graph=True)
         optimizer.step()
     '''Need to add code to train the critic when we train the discriminator'''
+    return loss
 
 def train_generator(input_variable, input_lengths, target_variable, topics, model,
                 teacher_forcing_ratio, is_eval=False):
@@ -246,17 +246,15 @@ def train_batch(input_variables, input_lengths, target_variables, topics, teache
                 # CONFIRM ? The discriminator should output 0 if the abstract is from the generated data
                 discriminator_target_variables.append(0.)
 
-        discriminator_input_variables = torch.stack(discriminator_input_variables)
-        discriminator_target_variables = torch.tensor(discriminator_target_variables).cuda() if input_variables.is_cuda else torch.tensor(discriminator_target_variables)
-        print(discriminator_input_variables.shape, discriminator_target_variables.shape)
+        discriminator_input_variables = torch.stack(discriminator_input_variables).squeeze()
+        discriminator_target_variables = torch.tensor(discriminator_target_variables).squeeze()
         if input_variables.is_cuda:
             discriminator_input_variables = discriminator_input_variables.cuda()
             discriminator_target_variables =discriminator_target_variables.cuda()
 
-        print(discriminator_input_variables.shape, discriminator_target_variables.shape)
         """ Mix them with the true data and pass it to the discriminator """
-        # output = train_discriminator(discriminator_input_variables, discriminator_target_variables)
-        # return output
+        output = train_discriminator(discriminator_input_variables, discriminator_target_variables)
+        return output
 
 
 def evaluate(validation_dataset, model, teacher_forcing_ratio):
@@ -297,16 +295,16 @@ def train_epoches(dataset, model, n_epochs, teacher_forcing_ratio):
             target_variables = target
             # train model
 
-            # Train the GENERATOR
-            loss_list = train_batch(input_variables, input_lengths,
-                               target_variables, topics, teacher_forcing_ratio, True)
-
-            print("Generator Trained successfully")
-            exit(0)
-
             # Train the DISCRIMINATOR
             train_batch(input_variables, input_lengths,
                         target_variables, topics, teacher_forcing_ratio, False)
+
+            print("Discriminator trained successfully")
+            exit(0)
+
+            # Train the GENERATOR
+            loss_list = train_batch(input_variables, input_lengths,
+                        target_variables, topics, teacher_forcing_ratio, True)
 
             # Record average loss
             num_examples = len(source)
