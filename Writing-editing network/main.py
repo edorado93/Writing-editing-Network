@@ -78,11 +78,11 @@ model = FbSeq2seq(encoder_title, encoder, context_encoder, decoder)
 
 """ Define the Discriminator model here """
 
-discrim_encoder = Encoder(config.emsize, config.emsize, vocab_size, config.batch_size, use_cuda=True)
+discrim_encoder = Encoder(config.emsize, config.emsize, vocab_size, config.batch_size, use_cuda=args.cuda)
 discrim_decoder = DecoderRNN(config.emsize, config.emsize, vocab_size, 1, config.batch_size)
-discrim_model = Discriminator(discrim_encoder, discrim_decoder)
+discrim_model = Discriminator(discrim_encoder, discrim_decoder, use_cuda=args.cuda)
 discrim_criterion = nn.BCELoss()
-critic_model = Critic(config.emsize, config.emsize, vocab_size, config.batch_size, use_cuda=True)
+critic_model = Critic(config.emsize, config.emsize, vocab_size, config.batch_size, use_cuda=args.cuda)
 
 """ Ends here """
 
@@ -198,7 +198,7 @@ def train_generator(input_variable, input_lengths, target_variable, topics, mode
             est_values = critic_model(discrim_input)
             dis_out, dis_sig = discrim_model(discrim_input, sequence_length, config.batch_size)
             #gen_log is the log probabilities of generator output
-            reinforce_loss, final_gen_obj = reinforce(gen_log, dis_out, est_values, sequence_length, config)
+            reinforce_loss, final_gen_obj = reinforce(gen_log, dis_out, est_values, sequence_length, config, args.cuda)
         else:
             reinforce_loss = 0
 

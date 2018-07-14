@@ -45,10 +45,14 @@ class DecoderRNN(nn.Module):
         output = output.squeeze(2)
         return output, hidden
 
-def decoder_train(input_tensor, encoder_hidden, decoder, seq_length, batch_size):
+def decoder_train(input_tensor, encoder_hidden, decoder, seq_length, batch_size, use_cuda):
     decoder_input = torch.zeros((batch_size, 1), dtype=torch.long)
-    decoder_hidden = encoder_hidden
     decoder_output_f = torch.tensor([])
+    if use_cuda:
+        decoder_input = decoder_input.cuda()
+        decoder_output_f = decoder_output_f.cuda()
+    decoder_hidden = encoder_hidden
+
     for di in range(seq_length):
         decoder_output, decoder_hidden = decoder(decoder_input, decoder_hidden)
         decoder_input = input_tensor[:, di]
@@ -82,7 +86,7 @@ class Critic(nn.Module):
         out_space1 = out_space.squeeze(2)
         return out_space1
 
-def reinforce(gen_log_prob, dis_pred, est_val, seq_length, config):
+def reinforce(gen_log_prob, dis_pred, est_val, seq_length, config, use_cuda=False):
     gamma = 0.8835659
     m = nn.Sigmoid()
     rewards = torch.log(m(dis_pred))
@@ -91,6 +95,8 @@ def reinforce(gen_log_prob, dis_pred, est_val, seq_length, config):
     rewards = torch.unbind(rewards, dim=1)
     for t in range(seq_length):
         cum_value = torch.zeros(config.batch_size)
+        if use_cuda:
+            cum_value = cum_value.cuda()
         for s in range(t, seq_length):
             discount = (gamma ** (s - t))
             cum_value += discount * rewards[s]
@@ -110,7 +116,8 @@ def reinforce(gen_log_prob, dis_pred, est_val, seq_length, config):
     for t in range(seq_length):
         log_probability = gen_log_prob[t]
         cum_advantage = torch.zeros(config.batch_size)
-
+        if use_cuda:
+            cum_advantage = cum_advantage.cuda()
         for s in range(t, seq_length):
             cum_advantage += (gamma ** (s - t)) * rewards[s]
 
@@ -128,15 +135,16 @@ def reinforce(gen_log_prob, dis_pred, est_val, seq_length, config):
 
 class Discriminator(nn.Module):
 
-    def __init__(self, encoder, decoder):
+    def __init__(self, encoder, decoder, use_cuda=False):
         super(Discriminator, self).__init__()
         self.encoder = encoder
         self.decoder = decoder
+        self.use_cuda = use_cuda
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, input, seq_length, batch_size):
         e_out, e_hid = self.encoder(input)
-        dis_out = decoder_train(input, e_hid, self.decoder, seq_length, batch_size)
+        dis_out = decoder_train(input, e_hid, self.decoder, seq_length, batch_size, self.use_cuda)
         dis_sig = self.sigmoid(dis_out)
         return dis_out, dis_sig
 
