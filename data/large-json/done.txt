@@ -1,0 +1,108 @@
+data-driven impulse response regularization via deep learning
+recycling randomness with structure for sublinear time kernel expansions
+forecasting human dynamics from static images
+model-based diagnosis using structured system descriptions
+structure learning in motor control : a deep reinforcement learning model
+predicting human activities using stochastic grammar
+does a plane imitate a bird ? does computer vision have to follow biological paradigms ?
+towards automatic construction of diverse , high-quality image dataset
+a general pipeline for 3d detection of vehicles
+target-quality image compression with recurrent , convolutional neural networks
+fame : face association through model evolution
+tensor factorization via matrix factorization
+constrained deep metric learning for person re-identification
+gradient layer : enhancing the convergence of adversarial training for generative models
+keyphrase extraction : enhancing lists
+deep hybrid similarity learning for person re-identification
+gated-attention architectures for task-oriented language grounding
+a unified framework for tumor proliferation score prediction in breast histopathology
+a comparison on audio signal preprocessing methods for deep neural networks on music tagging
+a vision based system for underwater docking
+overlapping and non-overlapping camera layouts for robot pose estimation
+supervised classification performance of multispectral images
+deep reinforcement learning with macro-actions
+gauss quadrature for matrix inverse forms with applications
+exploring high-dimensional structure via axis-aligned decomposition of linear projections
+robust visual tracking via hierarchical convolutional features
+convolutional image captioning
+nytro : when subsampling meets early stopping
+learning non-linear feature maps
+anchoring and agreement in syntactic annotations
+a mutually-dependent hadamard kernel for modelling latent variable couplings
+viewpoint selection for photographing architectures
+impossibility of deducing preferences and rationality from human policy
+representing verbs with rich contexts : an evaluation on verb similarity
+graph classification with 2d convolutional neural networks
+possibilistic pertinence feedback and semantic networks for goal 's extraction
+deep extreme feature extraction : new mva method for searching particles in high energy physics
+fair clustering through fairlets
+mono-camera 3d multi-object tracking using deep learning detections and pmbm filtering
+robust compressed sensing and sparse coding with the difference map
+fast amortized inference of neural activity from calcium imaging data with variational autoencoders
+decomposition during search for propagation-based constraint solvers
+distance metric learning for aspect phrase grouping
+iedc : an integrated approach for overlapping and non-overlapping community detection
+vector quantization using the improved differential evolution algorithm for image compression
+fully convolutional networks for semantic segmentation
+fast adaptation in generative models with generative matching networks
+learning deep structured active contours end-to-end
+cross-sentence n-ary relation extraction with graph lstms
+failures of gradient-based deep learning
+context matters : refining object detection in video with recurrent neural networks
+online reinforcement learning for dynamic multimedia systems
+visda : the visual domain adaptation challenge
+learning uncertain convolutional features for accurate saliency detection
+c-arm tomographic imaging technique for nephrolithiasis and detection of kidney stones
+an improved video analysis using context based extension of lsh
+regularized maximum likelihood for intrinsic dimension estimation
+efficient and consistent robust time series analysis
+a fusion-based gender recognition method using facial images
+similarity-based approaches to natural language processing
+the reactor : a sample-efficient actor-critic architecture
+supervised opinion aspect extraction by exploiting past extraction results
+fast non parametric entropy estimation for spatial-temporal saliency method
+robust elastic net regression
+group-wise deep co-saliency detection
+automated identification of trampoline skills using computer vision extracted pose estimation
+evaluating discourse phenomena in neural machine translation
+recurrent neural networks with limited numerical precision
+are gans created equal ? a large-scale study
+spoken language identification using hybrid feature extraction methods
+latent space oddity : on the curvature of deep generative models
+blind image separation based on exponentiated transmuted weibull distribution
+emergence of structured behaviors from curiosity-based intrinsic motivation
+does multimodality help human and machine for translation and image captioning ?
+gated feedback recurrent neural networks
+exploring human-like attention supervision in visual question answering
+methodology and results for the competition on semantic similarity evaluation and entailment recognition for propor 2016
+fast fusion of multi-band images based on solving a sylvester equation
+is human face processing a feature- or pattern-based task ? evidence using a unified computational method driven by eye movements
+an efficient algebraic solution to the perspective-three-point problem
+video captioning with recurrent networks based on frame- and video-level features and visual content classification
+integrating three mechanisms of visual attention for active visual search
+push and pull search for solving constrained multi-objective optimization problems
+integration of absolute orientation measurements in the kinectfusion reconstruction pipeline
+dimensionality on summarization
+computer vision tools for the non-invasive assessment of autism-related behavioral markers
+optimal nudging : solving average-reward semi-markov decision processes as a minimal sequence of cumulative tasks
+a generative word embedding model and its low rank positive semidefinite solution
+performance comparisons of pso based clustering
+an algorithmic framework to control bias in bandit-based personalization
+on the finite time convergence of cyclic coordinate descent methods
+learning gaze transitions from depth to improve video saliency estimation
+robust unsupervised domain adaptation for neural networks via moment alignment
+language transfer of audio word2vec : learning audio segment representations without target language data
+statistical mechanics of unsupervised feature learning in a restricted boltzmann machine with binary synapses
+rule-based emotion detection on social media : putting tweets on plutchik 's wheel
+rferns : an implementation of the random ferns method for general-purpose machine learning
+using probabilistic programs as proposals
+osteoarthritis disease detection system using self organizing maps method based on ossa manus x-ray
+an ensemble learning method for scene classification based on hidden markov model image representation
+learning exponential families in high-dimensions : strong convexity and sparsity
+initialization and coordinate optimization for multi-way matching
+learning action concept trees and semantic alignment networks from image-description data
+deep learning of local rgb-d patches for 3d object detection and 6d pose estimation
+benchmarking for bayesian reinforcement learning
+on multiplicative integration with recurrent neural networks
+building large machine reading-comprehension datasets using paragraph vectors
+dynamic infinite mixed-membership stochastic blockmodel

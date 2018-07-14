@@ -1,0 +1,83 @@
+data formats for phonological corpora
+databright : towards a global exchange for decentralized data ownership and trusted computation
+minlip for the identification of monotone wiener systems
+fast context-free grammar parsing requires fast boolean matrix multiplication
+coherence , belief expansion and bayesian networks
+approximate learning in complex dynamic bayesian networks
+improving energy efficiency in femtocell networks : a hierarchical reinforcement learning framework
+parallel training of dnns with natural gradient and parameter averaging
+semantic polarity of adjectival predicates in online reviews
+image segmentation by using threshold techniques
+classifying variable-length audio files with all-convolutional networks and masked global pooling
+semantic parsing with semi-supervised sequential autoencoders
+ethical artificial intelligence
+non-contextual modeling of sarcasm using a neural network benchmark
+hypernyms under siege : linguistically-motivated artillery for hypernymy detection
+new results for the map problem in bayesian networks
+indowordnets help in indian language machine translation
+planning with partially observable markov decision processes : advances in exact solution method
+efficient open world reasoning for planning
+stochastic low-rank bandits
+conformant planning via symbolic model checking
+automatic spatial context-sensitive cloud/cloud-shadow detection in multi-source multi-spectral earth observation images : autocloud+
+clustering using max-norm constrained optimization
+analytic feature selection for support vector machines
+a 8 bits pipeline analog to digital converter design for high speed camera application
+skynet : an efficient and robust neural network training tool for machine learning in astronomy
+optimization methods for convolutional sparse coding
+parser for abstract meaning representation using learning to search
+multi-perspective context matching for machine comprehension
+collaborative filtering via group-structured dictionary learning
+algorithms and complexity results for exact bayesian structure learning
+speech recognition by composition of weighted finite automata
+on the blindspots of convolutional networks
+comparative opinion mining : a review
+internet of things applications : animal monitoring with unmanned aerial vehicle
+concept relation discovery and innovation enabling technology ( cordiet )
+an approximate bayesian long short-term memory algorithm for outlier detection
+sticking the landing : simple , lower-variance gradient estimators for variational inference
+comparative experiments on disambiguating word senses : an illustration of the role of bias in machine learning
+transfer from multiple mdps
+em-based mixture models applied to video event detection
+on map inference by mwss on perfect graphs
+hierarchical learning algorithm for the beta basis function neural network
+holstep : a machine learning dataset for higher-order logic theorem proving
+generating multiple diverse hypotheses for human 3d pose consistent with 2d joint detections
+vesselness via multiple scale orientation scores
+a study of car-to-train assignment problem for rail express cargos on scheduled and unscheduled train service network
+image super-resolution using deep convolutional networks
+classification of complex wishart matrices with a diffusion-reaction system guided by stochastic distances
+reconstructing articulated rigged models from rgb-d videos
+heuristics for planning , plan recognition and parsing
+mean field methods for a special class of belief networks
+deep attribute networks
+design of intelligent layer for flexible querying in databases
+convnet architecture search for spatiotemporal feature learning
+stdp allows close-to-optimal spatiotemporal spike pattern detection by single coincidence detector neurons
+efficient and accurate monitoring of the depth information in a wireless multimedia sensor network based surveillance
+compiling and processing historical and contemporary portuguese corpora
+supertagging : introduction , learning , and application
+fitness landscape analysis for dynamic resource allocation in multiuser ofdm based cognitive radio systems
+experiments to improve named entity recognition on turkish tweets
+aerial lanenet : lane marking semantic segmentation in aerial imagery using wavelet-enhanced cost-sensitive symmetric fully convolutional neural networks
+non-negative matrix factorization via archetypal analysis
+computational understanding and manipulation of symmetries
+unsupervised ensemble regression
+adaptive stochastic alternating direction method of multipliers
+imitation from observation : learning to imitate behaviors from raw video via context translation
+near-optimal discrete optimization for experimental design : a regret minimization approach
+budget-constrained multi-armed bandits with multiple plays
+adaptive learning rule for hardware-based deep neural networks using electronic synapse devices
+temporal expression normalisation in natural language texts
+neurally-guided procedural models : amortized inference for procedural graphics programs using neural networks
+implementation of auto monitoring and short-message-service system via gsm modem
+counterfactual reasoning and learning systems
+causes for query answers from databases : datalog abduction , view-updates , and integrity constraints
+digitizing municipal street inspections using computer vision
+augmented reality implementation methods in mainstream applications
+improving distributed representations of tweets - present and future
+a geometric framework for convolutional neural networks
+on deep multi-view representation learning : objectives and optimization
+full reference objective quality assessment for reconstructed background images
+the temporal calculus of conditional objects and conditional events
+estimating cosmological parameters from the dark matter distribution
