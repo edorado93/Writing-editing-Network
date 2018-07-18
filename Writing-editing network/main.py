@@ -46,10 +46,10 @@ cwd = os.getcwd()
 vectorizer = Vectorizer(min_frequency=config.min_freq)
 
 validation_data_path = cwd + config.relative_dev_path
-validation_abstracts = headline2abstractdataset(validation_data_path, vectorizer, args.cuda, max_len=1000)
+validation_abstracts = headline2abstractdataset(validation_data_path, vectorizer, args.cuda, max_len=1000, use_topics=config.use_topics, use_structure_info=config.use_labels)
 
 data_path = cwd + config.relative_data_path
-abstracts = headline2abstractdataset(data_path, vectorizer, args.cuda, max_len=1000)
+abstracts = headline2abstractdataset(data_path, vectorizer, args.cuda, max_len=1000, use_topics=config.use_topics, use_structure_info=config.use_labels)
 print("number of training examples: %d" % len(abstracts))
 
 vocab_size = abstracts.vectorizer.vocabulary_size
@@ -122,8 +122,6 @@ def train_batch(input_variable, input_lengths, target_variable, topics, structur
                           " ".join([vectorizer.idx2word[tok.item()] for tok in t if tok.item() != 0 and tok.item() != 1 and tok.item() != 2])))
 
     for i in range(config.num_exams):
-        topics = topics if config.use_topics else None
-        structure_abstracts = structure_abstracts if config.use_structure_information else None
         decoder_outputs, _, other = \
             model(input_variable, prev_generated_seq, input_lengths,
                    target_variable, teacher_forcing_ratio, topics=topics, structure_abstracts=structure_abstracts)
@@ -208,9 +206,13 @@ def train_epoches(dataset, model, n_epochs, teacher_forcing_ratio):
         epoch_start_time = start
         total_loss = 0
         training_loss_list = [0] * config.num_exams
-        for batch_idx, (source, target, input_lengths, topics, structure_abstracts) in enumerate(train_loader):
-            input_variables = source
-            target_variables = target
+        for batch_idx, data in enumerate(train_loader):
+            topics = data[3] if config.use_topics else None
+            structure_abstracts = data[4] if config.use_labels else None
+
+            input_variables = data[0]
+            target_variables = data[1]
+            input_lengths = data[2]
             # train model
             loss_list = train_batch(input_variables, input_lengths,
                                target_variables, topics, structure_abstracts, model, teacher_forcing_ratio)

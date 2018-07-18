@@ -129,7 +129,9 @@ class headline2abstractdataset(Dataset):
 
     structure_dict = {"introduction": 1, "body": 2, "conclusion": 3}
 
-    def __init__(self, path, vectorizer, USE_CUDA=torch.cuda.is_available(), max_len=200):
+    def __init__(self, path, vectorizer, USE_CUDA=torch.cuda.is_available(), max_len=200, use_topics=False, use_structure_info=False):
+        self.use_topics = use_topics
+        self.use_structure_info = use_structure_info
         self.head_len = 0
         self.abs_len = 0
         self.max_len = max_len
@@ -174,6 +176,7 @@ class headline2abstractdataset(Dataset):
         abstracts = []
         headlines = []
         topics = []
+        labels = []
         i = 0
         with open(path, encoding="utf-8") as f:
             for line in f:
@@ -182,36 +185,13 @@ class headline2abstractdataset(Dataset):
                 abstracts.append(j["abstract"])
                 if "topics" in j:
                     topics.append(j["topics"])
+                if "labels" in j:
+                    labels.append(j["labels"])
                 i += 1
-        corpus = []
-        topics_v = []
-        abstract_structures = []
         self.vectorizer.context_vectorizer['algorithm'] = 0
-        for i in range(len(abstracts)):
-            if len(headlines[i]) > 0 and len(abstracts[i]) > 0:
-                h_a_pair = []
-                h_a_pair.append(self._tokenize_word(headlines[i]))
-
-                # Assumption is that every word will have structural information associated with it.
-                abstract_and_structure_information = self._tokenize_word(abstracts[i])
-                structure = [headline2abstractdataset.structure_dict[s] for s, _ in abstract_and_structure_information]
-                abstract = [a for _, a in abstract_and_structure_information]
-                h_a_pair.append(abstract)
-                # This list `structure` has vectorised structure labels. The labels can be one of
-                # introduction, body or conclusion. Correspondingly, we have indexes of 1, 2 or 3 in
-                # the vectorizer.context_vectorizer.
-                abstract_structures.append(structure)
-                if len(h_a_pair) > 1:
-                    corpus.append(h_a_pair)
-                    vectorized_topics = []
-                    if topics:
-                        for t in topics[i]:
-                            t = t.lower()
-                            if t not in self.vectorizer.context_vectorizer:
-                                self.vectorizer.context_vectorizer[t] = len(self.vectorizer.context_vectorizer)
-                            vectorized_topics.append(self.vectorizer.context_vectorizer[t])
-                        self.max_context_length = max(self.max_context_length, len(vectorized_topics))
-                    topics_v.append(vectorized_topics)
+        corpus = self._read_data(headlines, abstracts)
+        topics_v = self._read_topics(topics)
+        abstract_structures = self._read_structure(labels)
         return corpus, topics_v, abstract_structures
 
     def _tokenize_word(self, sentence):
@@ -227,18 +207,50 @@ class headline2abstractdataset(Dataset):
             self.vectorizer.fit(self.corpus)
         return self.vectorizer.transform(self.corpus)
 
+    def _read_data(self, headlines, abstracts):
+        corpus = []
+        for i in range(len(abstracts)):
+            if len(headlines[i]) > 0 and len(abstracts[i]) > 0:
+                h_a_pair = []
+                h_a_pair.append(self._tokenize_word(headlines[i]))
+                h_a_pair.append(self._tokenize_word(abstracts[i]))
+                if len(h_a_pair) > 1:
+                    corpus.append(h_a_pair)
+        return corpus
+
+    def _read_topics(self, topics):
+        topics_v = []
+        for i in range(len(topics)):
+            vectorized_topics = []
+            if topics:
+                for t in topics[i]:
+                    t = t.lower()
+                    if t not in self.vectorizer.context_vectorizer:
+                        self.vectorizer.context_vectorizer[t] = len(self.vectorizer.context_vectorizer)
+                    vectorized_topics.append(self.vectorizer.context_vectorizer[t])
+                self.max_context_length = max(self.max_context_length, len(vectorized_topics))
+            topics_v.append(vectorized_topics)
+
+    def _read_structure(self, structure_info):
+        structure = []
+        for i in range(len(structure_info)):
+            structure.append([headline2abstractdataset.structure_dict[s] for s, _ in structure_info[i]])
+
+        return structure
+
     def __getitem__(self, index):
         len_s, len_t, source, target, topics, structure_abstracts = self.data[index]
-        source = torch.LongTensor(source)
-        topics = torch.LongTensor(topics)
-        target = torch.LongTensor(target)
-        structure_abstracts = torch.LongTensor(structure_abstracts)
-        if self.USE_CUDA:
-            source = source.cuda()
-            target = target.cuda()
-            topics = topics.cuda()
-            structure_abstracts = structure_abstracts.cuda()
-        return source, target, len_s, topics, structure_abstracts
+        source = torch.LongTensor(source).cuda() if self.USE_CUDA else torch.LongTensor(source)
+        target = torch.LongTensor(target).cuda() if self.USE_CUDA else torch.LongTensor(source)
+        topics = (torch.LongTensor(topics).cuda() if self.USE_CUDA else torch.LongTensor(source)) if self.use_topics else None
+        structure_abstracts = (torch.LongTensor(structure_abstracts).cuda() if self.USE_CUDA else torch.LongTensor(source)) if self.use_topics else None
+
+        ret = [source, target, len_t]
+        if self.use_topics:
+            ret.append(topics)
+        if self.use_structure_info:
+            ret.append(structure_abstracts)
+        return ret
 
     def __len__(self):
         return len(self.data)
