@@ -106,3 +106,641 @@ benchmarking for bayesian reinforcement learning
 on multiplicative integration with recurrent neural networks
 building large machine reading-comprehension datasets using paragraph vectors
 dynamic infinite mixed-membership stochastic blockmodel
+egocentric basketball motion planning from a single first-person image
+image-based face detection and recognition : `` state of the art ''
+multiple kernel learning from noisy labels by stochastic programming
+end-to-end flow correlation tracking with spatial-temporal attention
+flow-free video object segmentation
+semantic segmentation from limited training data
+riemannian metrics for neural networks ii : recurrent networks and learning symbolic data sequences
+accelerating eulerian fluid simulation with convolutional networks
+identifying stable patterns over time for emotion recognition from eeg
+landmark-based plan recognition
+estimating historical hourly traffic volumes via machine learning and vehicle probe data : a maryland case study
+refining recency search results with user click feedback
+geometric feature-based facial expression recognition in image sequences using multi-class adaboost and support vector machines
+action-depedent control variates for policy optimization via stein 's identity
+image segmentation by discounted cumulative ranking on maximal cliques
+a simple squared-error reformulation for ordinal classification
+sampling for inference in probabilistic models with fast bayesian quadrature
+learning filter scale and orientation in cnns
+dualgan : unsupervised dual learning for image-to-image translation
+object detection and sorting by using a global texture-shape 3d feature descriptor
+automatically redundant features removal for unsupervised feature selection via sparse feature graph
+information-theoretic model identification and policy search using physics engines with application to robotic manipulation
+autoprognosis : automated clinical prognostic modeling via bayesian optimization with structured kernel learning
+discriminatively trained latent ordinal model for video classification
+a classification-based perspective on gan distributions
+mixed context networks for semantic segmentation
+the goldilocks principle : reading children 's books with explicit memory representations
+learning hand-eye coordination for robotic grasping with deep learning and large-scale data collection
+object detection in videos with tubelet proposal networks
+pdnet : prior-model guided depth-enhanced network for salient object detection
+finding numerical solutions of diophantine equations using ant colony optimization
+trainable methods for surface natural language generation
+on the importance of stereo for accurate depth estimation : an efficient semi-supervised deep neural network approach
+flower pollination algorithm for global optimization
+sparse partially linear additive models
+object-based reasoning in vqa
+recognition of feature curves on 3d shapes using an algebraic approach to hough transforms
+long-term forecasting using tensor-train rnns
+a study into the similarity in generator and discriminator in gan architecture
+all weather perception : joint data association , tracking , and classification for autonomous ground vehicles
+adaptive quantization for deep neural network
+best-effort inductive logic programming via fine-grained cost-based hypothesis generation
+modeling relation paths for representation learning of knowledge bases
+large-scale 3d scene classification with multi-view volumetric cnn
+temporal-difference networks
+spectral estimation of conditional random graph models for large-scale network data
+evaluating anytime algorithms for learning optimal bayesian networks
+recurrent models of visual attention
+closed-loop learning of visual control policies
+cognitive psychology for deep neural networks : a shape bias case study
+in-order transition-based constituent parsing
+compressive acquisition of dynamic scenes
+discriminant projection representation-based classification for vision recognition
+real-time alert correlation with type graphs
+note on attacking object detectors with adversarial stickers
+ganosaic : mosaic creation with generative texture manifolds
+generalized sequential tree-reweighted message passing
+deep multimodal speaker naming
+omg u got flu ? analysis of shared health messages for bio-surveillance
+low-rank label propagation for semi-supervised learning with 100 millions samples
+stochastic gradient hamiltonian monte carlo
+on the success rate of crossover operators for genetic programming with offspring selection
+dropout with expectation-linear regularization
+communication-efficient learning of deep networks from decentralized data
+unsupervised sentence simplification using deep semantics
+learning bayesian networks with local structure
+constraint reduction using marginal polytope diagrams for map lp relaxations
+large-scale low-rank matrix learning with nonconvex regularizers
+recognition of acoustic events using masked conditional neural networks
+efficient sampling from time-varying log-concave distributions
+denser cities : a system for dense efficient reconstructions of cities
+stroke sequence-dependent deep convolutional neural network for online handwritten chinese character recognition
+adversarially regularized graph autoencoder
+parsing english with a link grammar
+pointfusion : deep sensor fusion for 3d bounding box estimation
+a fast statistical method for multilevel thresholding in wavelet domain
+pros and cons of gan evaluation measures
+3d pathfinding and collision avoidance using uneven search-space quantization and visual cone search
+improving context aware language models
+object detection with mask-based feature encoding
+supervised classification of dermatological diseases by deep neural networks
+functional mixture discriminant analysis with hidden process regression for curve classification
+memory-based control with recurrent neural networks
+fuzzy human motion analysis : a review
+automatic tm cleaning through mt and pos tagging : autodesk 's submission to the nlp4tm 2016 shared task
+classification of segments in polsar imagery by minimum stochastic distances between wishart distributions
+learning steerable filters for rotation equivariant cnns
+scalable discovery of time-series shapelets
+text region extraction from business card images for mobile devices
+probabilistic combination of classifier and cluster ensembles for non-transductive learning
+prediction with missing data via bayesian additive regression trees
+dialogue act tagging with transformation-based learning
+improving the neural gpu architecture for algorithm learning
+spatial mapping with gaussian processes and nonstationary fourier features
+a simple approach to building ensembles of naive bayesian classifiers for word sense disambiguation
+application of quantum annealing to training of deep neural networks
+rollout sampling policy iteration for decentralized pomdps
+one-shot learning in discriminative neural networks
+partial sum minimization of singular values representation on grassmann manifolds
+deep learning with energy-efficient binary gradient cameras
+variational program inference
+political speech generation
+tackling over-pruning in variational autoencoders
+adversarially regularized graph autoencoder
+parsing english with a link grammar
+pointfusion : deep sensor fusion for 3d bounding box estimation
+a fast statistical method for multilevel thresholding in wavelet domain
+a metric learning perspective of svm : on the relation of svm and lmnn
+pros and cons of gan evaluation measures
+3d pathfinding and collision avoidance using uneven search-space quantization and visual cone search
+improving context aware language models
+object detection with mask-based feature encoding
+supervised classification of dermatological diseases by deep neural networks
+functional mixture discriminant analysis with hidden process regression for curve classification
+memory-based control with recurrent neural networks
+committee-based sample selection for probabilistic classifiers
+fuzzy human motion analysis : a review
+automatic tm cleaning through mt and pos tagging : autodesk 's submission to the nlp4tm 2016 shared task
+classification of segments in polsar imagery by minimum stochastic distances between wishart distributions
+aide : fast and communication efficient distributed optimization
+learning steerable filters for rotation equivariant cnns
+scalable discovery of time-series shapelets
+visual forecasting by imitating dynamics in natural sequences
+text region extraction from business card images for mobile devices
+probabilistic combination of classifier and cluster ensembles for non-transductive learning
+prediction with missing data via bayesian additive regression trees
+dialogue act tagging with transformation-based learning
+improving the neural gpu architecture for algorithm learning
+spatial mapping with gaussian processes and nonstationary fourier features
+a simple approach to building ensembles of naive bayesian classifiers for word sense disambiguation
+application of quantum annealing to training of deep neural networks
+rollout sampling policy iteration for decentralized pomdps
+one-shot learning in discriminative neural networks
+partial sum minimization of singular values representation on grassmann manifolds
+deep learning with energy-efficient binary gradient cameras
+variational program inference
+an improved discrete bat algorithm for symmetric and asymmetric traveling salesman problems
+political speech generation
+map-based multi-policy reinforcement learning : enhancing adaptability of robots by deep reinforcement learning
+data augmentation of railway images for track inspection
+efficient sampling for k-determinantal point processes
+learning heuristic search via imitation
+towards synthesizing complex programs from input-output examples
+arabic multi-dialect segmentation : bi-lstm-crf vs. svm
+an efficient preprocessing methodology for discovering patterns and clustering of web users using a dynamic art1 neural network
+enhancement of image resolution by binarization
+neutro-connectedness cut
+retinal vessel segmentation using the 2-d morlet wavelet and supervised classification
+training generative adversarial networks via primal-dual subgradient methods : a lagrangian perspective on gan
+a deep generative deconvolutional image model
+clustering of data with missing entries using non-convex fusion penalties
+pixcolor : pixel recursive colorization
+optimization as estimation with gaussian processes in bandit settings
+sampled weighted min-hashing for large-scale topic mining
+fast meta-learning for adaptive hierarchical classifier design
+3d deeply supervised network for automatic liver segmentation from ct volumes
+red : reinforced encoder-decoder networks for action anticipation
+streaming , distributed variational inference for bayesian nonparametrics
+rearrangement with nonprehensile manipulation using deep reinforcement learning
+margin : uncovering deep neural networks using graph signal analysis
+adaptive representation selection in contextual bandit with unlabeled history
+noise level estimation for overcomplete dictionary learning based on tight asymptotic bounds
+mcmc learning
+sparsity assisted solution to the twin image problem in phase retrieval
+the incredible shrinking neural network : new perspectives on learning representations through the lens of pruning
+a computer vision system to localize and classify wastes on the streets
+dynamic steerable blocks in deep residual networks
+inferring narrative causality between event pairs in films
+3d tracking of water hazards with polarized stereo cameras
+long-range fractal correlations in literary corpora
+the many faces of optimism - extended version
+multiple hypothesis colorization
+efficient interactive annotation of segmentation datasets with polygon-rnn++
+leveraging context to support automated food recognition in restaurants
+robust em kernel-based methods for linear system identification
+studying invariances of trained convolutional neural networks
+socially constrained structural learning for groups detection in crowd
+pyramid person matching network for person re-identification
+an online learning algorithm for neuromorphic hardware implementation
+training cnns with low-rank filters for efficient image classification
+multiple-view spectral clustering for group-wise functional community detection
+unsupervised domain adaptation in the wild : dealing with asymmetric label sets
+bounded optimal exploration in mdp
+optimal shrinkage of singular values under random data contamination
+the k-nearest neighbour ucb algorithm for multi-armed bandits with covariates
+similarity-based models of word cooccurrence probabilities
+uncertainty estimates for optical flow with multi-hypotheses networks
+contextual relationship-based activity segmentation on an event stream in the iot environment with multi-user activities
+automatic real-time background cut for portrait videos
+improving human activity recognition through ranking and re-ranking
+maximally informative hierarchical representations of high-dimensional data
+random feature expansions for deep gaussian processes
+theory and tools for the conversion of analog to spiking convolutional neural networks
+enhancing the performance of convolutional neural networks on quality degraded datasets
+facial landmarks detection by self-iterative regression based landmarks-attention network
+reinforcement learning approach for parallelization in filters aggregation based feature selection algorithms
+mordred : memory-based ordinal regression deep neural networks for time series forecasting
+addressing item-cold start problem in recommendation systems using model based approach and deep learning
+a novel brain decoding method : a correlation network framework for revealing brain connections
+automatic pixelwise object labeling for aerial imagery using stacked u-nets
+non-convex rank minimization via an empirical bayesian approach
+learning to prune filters in convolutional neural networks
+combinatorial multi-objective multi-armed bandit problem
+new advances in inference by recursive conditioning
+superspike : supervised learning in multi-layer spiking neural networks
+enhanced local binary patterns for automatic face recognition
+efficient approximate solutions to mutual information based global feature selection
+a correlation game for unsupervised learning yields computational interpretations of hebbian excitation , anti-hebbian inhibition , and synapse elimination
+noisy networks for exploration
+deepnorm-a deep learning approach to text normalization
+information-theoretic semi-supervised metric learning via entropy regularization
+on the sample complexity of end-to-end training vs. semantic abstraction training
+deep forecast : deep learning-based spatio-temporal forecasting
+finding a maximum clique using ant colony optimization and particle swarm optimization in social networks
+image reconstruction from bag-of-visual-words
+very efficient training of convolutional neural networks using fast fourier transform and overlap-and-add
+recognition of changes in sar images based on gauss-log ratio and mrffcm
+joint embedding of hierarchical categories and entities for concept categorization and dataless classification
+action recognition with joint attention on multi-level deep features
+multi-modal obstacle detection in unstructured environments with conditional random fields
+unsupervised learning of regression mixture models with unknown number of components
+random multi-constraint projection : stochastic gradient methods for convex optimization with many constraints
+anticipating visual representations from unlabeled video
+blind system identification using kernel-based methods
+neural network translation models for grammatical error correction
+a comparative evaluation of two algorithms of detection of masses on mammograms
+positive semidefinite metric learning with boosting
+empirical evaluation of rnn architectures on sentence classification task
+data sets : word embeddings learned from tweets and general data
+squeezedet : unified , small , low power fully convolutional neural networks for real-time object detection for autonomous driving
+incorporating type ii error probabilities from independence tests into score-based learning of bayesian network structure
+evidential relational clustering using medoids
+neural associative memory for dual-sequence modeling
+near-optimal algorithms for differentially-private principal components
+a convex approach for image hallucination
+incorporating both distributional and relational semantics in word representations
+plan , attend , generate : character-level neural machine translation with planning in the decoder
+a bayesian ensemble for unsupervised anomaly detection
+liuboost : locality informed underboosting for imbalanced data classification
+data-efficient learning of feedback policies from image pixels using deep dynamical models
+exploiting generalisation symmetries in accuracy-based learning classifier systems : an initial study
+exploiting the structure : stochastic gradient methods using raw clusters
+hybrid neural network architecture for on-line learning
+high dimensional bayesian optimisation and bandits via additive models
+restricted boltzmann machines for robust and fast latent truth discovery
+applying aco to large scale tsp instances
+to drop or not to drop : robustness , consistency and differential privacy properties of dropout
+partial reinitialisation for optimisers
+camera calibration for daylight specular-point locus
+rail : risk-averse imitation learning
+fuzzy soft set based classification for gene expression data
+semi-supervised question retrieval with gated convolutions
+learning taxonomy for text segmentation by formal concept analysis
+attention-based end-to-end speech recognition on voice search
+learning blind motion deblurring
+one sense per collocation and genre/topic variations
+multiple output regression with latent noise
+from source to target and back : symmetric bi-directional adaptive gan
+map estimation , linear programming and belief propagation with convex free energies
+l1-norm batch normalization for efficient training of deep neural networks
+a compact avlsi conductance-based silicon neuron
+exploration in nethack with secret discovery
+a self-training method for semi-supervised gans
+good features to correlate for visual tracking
+multi-atlas segmentation using partially annotated data : methods and annotation strategies
+hamsi : a parallel incremental optimization algorithm using quadratic approximations for solving partially separable problems
+modelling constraint solver architecture design as a constraint problem
+reviving and improving recurrent back-propagation
+sesa : supervised explicit semantic analysis
+learning with group invariant features : a kernel perspective
+influence of the event rate on discrimination abilities of bankruptcy prediction models
+computational ghost imaging using deep learning
+partial-hessian strategies for fast learning of nonlinear embeddings
+image classification using local tensor singular value decompositions
+computational investigation of low-discrepancy sequences in simulation algorithms for bayesian networks
+the relative performance of ensemble methods with deep convolutional neural networks for image classification
+structured prediction with output embeddings for semantic image annotation
+automatic face reenactment
+web robot detection in academic publishing
+improving visually grounded sentence representations with self-attention
+rehar : robust and efficient human activity recognition
+parsing with typed feature structures
+localizing by describing : attribute-guided attention localization for fine-grained recognition
+a coordinated mdp approach to multi-agent planning for resource allocation , with applications to healthcare
+learning hidden markov models with geometrical constraints
+unsupervised feature learning based on deep models for environmental audio tagging
+hierarchical cross network for person re-identification
+hyperspectral image classification and clutter detection via multiple structural embeddings and dimension reductions
+a multi-feature tracking algorithm enabling adaptation to context variations
+deeply coupled auto-encoder networks for cross-view classification
+multi-q pattern classification of polarization curves
+pass-glm : polynomial approximate sufficient statistics for scalable bayesian glm inference
+dual attention matching network for context-aware feature sequence based person re-identification
+performance measurement under increasing environmental uncertainty in the context of interval type-2 fuzzy logic based robotic sailing
+tracking objects with higher order interactions using delayed column generation
+learning when to trust distant supervision : an application to low-resource pos tagging using cross-lingual projection
+long-term temporal convolutions for action recognition
+evaluation of object detection proposals under condition variations
+semi-supervised learning with the deep rendering mixture model
+signed laplacian for spectral clustering revisited
+budget online multiple kernel learning
+novel exploration techniques ( nets ) for malaria policy interventions
+surrogate scoring rules and a dominant truth serum for information elicitation
+a deep compositional framework for human-like language acquisition in virtual environment
+an efficient k-means algorithm for massive data
+deep recurrent neural network for protein function prediction from sequence
+regularized evolution for image classifier architecture search
+second-order temporal pooling for action recognition
+synthetic data for neural machine translation of spoken-dialects
+an end-to-end neural network for polyphonic piano music transcription
+clustering with side information : from a probabilistic model to a deterministic algorithm
+deep-6dpose : recovering 6d object pose from a single rgb image
+transferring learned microcalcification group detection from 2d mammography to 3d digital breast tomosynthesis using a hierarchical model and scope-based normalization features
+leveraging conversation structure on social media to identify potentially influential users
+clustering via mode seeking by direct estimation of the gradient of a log-density
+single-agent on-line path planning in continuous , unpredictable and highly dynamic environments
+efficient solution algorithms for factored mdps
+hierarchical 3d fully convolutional networks for multi-organ segmentation
+cuni system for the wmt17 multimodal translation task
+collaborative summarization of topic-related videos
+labelbank : revisiting global perspectives for semantic segmentation
+multi-view dynamic facial action unit detection
+adaptive admm with spectral penalty parameter selection
+convolutional 2d knowledge graph embeddings
+a parameter-free learning automaton scheme
+automatic detection and categorization of election-related tweets
+aspect-based sentiment analysis using a two-step neural network architecture
+fast parametric learning with activation memorization
+solving the problem of the k parameter in the knn classifier using an ensemble learning approach
+restricted manipulation in iterative voting : convergence and condorcet efficiency
+taxonomy grounded aggregation of classifiers with different label sets
+revisiting semi-supervised learning with graph embeddings
+an investigation of the sampling-based alignment method and its contributions
+radial basis function process neural network training based on generalized frechet distance and ga-sa hybrid strategy
+adaptive deep learning through visual domain localization
+proposal for automatic license and number plate recognition system for vehicle identification
+language generation with recurrent generative adversarial networks without pre-training
+stochastic , distributed and federated optimization for machine learning
+a survey on latent tree models and applications
+classification with asymmetric label noise : consistency and maximal denoising
+predictive uncertainty estimation via prior networks
+interpretable structure-evolving lstm
+brain tumor segmentation and radiomics survival prediction : contribution to the brats 2017 challenge
+sention : a framework for sensing facial expressions
+a shallow high-order parametric approach to data visualization and compression
+hbst : a hamming distance embedding binary search tree for visual place recognition
+mdps with unawareness
+hessian-free optimization for learning deep multidimensional recurrent neural networks
+convolutional random walk networks for semantic image segmentation
+leaf classification using shape , color , and texture features
+stochastic variance reduction methods for policy evaluation
+accelerating deep learning with shrinkage and recall
+classifying relations via long short term memory networks along shortest dependency path
+reinforcement learning by value gradients
+deep networks for image super-resolution with sparse prior
+efficient nonnegative tucker decompositions : algorithms and uniqueness
+markov chains on orbits of permutation groups
+tight variational bounds via random projections and i-projections
+multi-objective differential evolution with helper functions for constrained optimization
+transportation analysis of denoising autoencoders : a novel method for analyzing deep neural networks
+unsupervised triplet hashing for fast image retrieval
+dither is better than dropout for regularising deep neural networks
+augmenting light field to model wave optics effects
+functional gradient boosting based on residual network perception
+l2 regularization for learning kernels
+learning to learn : meta-critic networks for sample efficient learning
+speaking the same language : matching machine to human captions by adversarial training
+ai safety gridworlds
+an unsupervised method for uncovering morphological chains
+automatic belief revision in sneps
+automatic creation of urban velocity fields from aerial video
+advances in learning bayesian networks of bounded treewidth
+robust image registration via empirical mode decomposition
+mahnmf : manhattan non-negative matrix factorization
+on the capacity of face representation
+simultaneous modeling of multiple complications for risk profiling in diabetes care
+threat of adversarial attacks on deep learning in computer vision : a survey
+eye tracking for everyone
+a new variational principle for the euclidean distance function : linear approach to the non-linear eikonal problem
+multimodal convolutional neural networks for matching image and sentence
+using a probabilistic class-based lexicon for lexical ambiguity resolution
+stochastic interpretation of quasi-periodic event-based systems
+cadre modeling : simultaneously discovering subpopulations and predictive models
+the open world of micro-videos
+actor-critic sequence training for image captioning
+a hybrid multi objective particle swarm optimization method to discover biclusters in microarray data
+using entropy estimates for dag-based ontologies
+computational content analysis of negative tweets for obesity , diet , diabetes , and exercise
+on the latent variable interpretation in sum-product networks
+determining the veracity of rumours on twitter
+squeezed convolutional variational autoencoder for unsupervised anomaly detection in edge device industrial internet of things
+on the insufficiency of existing momentum schemes for stochastic optimization
+weakly-supervised discriminative patch learning via cnn for fine-grained recognition
+variational memory addressing in generative models
+craniofacial reconstruction as a prediction problem using a latent root regression model
+online tracking by learning discriminative saliency map with convolutional neural network
+real multi-sense or pseudo multi-sense : an approach to improve word representation
+efficient online relative comparison kernel learning
+her2 challenge contest : a detailed assessment of automated her2 scoring algorithms in whole slide images of breast cancer tissues
+detach and adapt : learning cross-domain disentangled deep representation
+3d image reconstruction from x-ray measurements with overlap
+preserving semantic relations for zero-shot learning
+recurrent latent variable networks for session-based recommendation
+assertion-based qa with question-aware open information extraction
+artificial intelligence safety and cybersecurity : a timeline of ai failures
+deepfuse : a deep unsupervised approach for exposure fusion with extreme exposure image pairs
+deep hashing network for unsupervised domain adaptation
+exponentiated gradient linucb for contextual multi-armed bandits
+computationally efficient robust estimation of sparse functionals
+two-stream collaborative learning with spatial-temporal attention for video classification
+minimally invasive randomization for collecting unbiased preferences from clickthrough logs
+deep reinforcement learning for mention-ranking coreference models
+salnet360 : saliency maps for omni-directional images with cnn
+binarized neural networks on the imagenet classification task
+geoseq2seq : information geometric sequence-to-sequence networks
+certified defenses against adversarial examples
+vehicle color recognition using convolutional neural network
+structured nonconvex and nonsmooth optimization : algorithms and iteration complexity analysis
+notes on noise contrastive estimation and negative sampling
+from random walks to distances on unweighted graphs
+knowledge graph embedding with multiple relation projections
+equivalence of equilibrium propagation and recurrent backpropagation
+achieving greater explanatory power and forecasting accuracy with non-uniform spread fuzzy linear regression
+analog simulator of integro-differential equations with classical memristors
+enhanced skin colour classifier using rgb ratio model
+make your bone great again : a study on osteoporosis classification
+alexu-word : a new dataset for isolated-word closed-vocabulary offline arabic handwriting recognition
+towards an arabic-english machine-translation based on semantic web
+on the universal approximation property and equivalence of stochastic computing-based neural networks and binary neural networks
+recurrent computations for visual pattern completion
+an eigenanalysis of data centering in machine learning
+identification of helicopter dynamics based on flight data using nature inspired techniques
+coordinating metaheuristic agents with swarm intelligence
+a learning approach to shallow parsing
+revisiting the vector space model : sparse weighted nearest-neighbor method for extreme multi-label classification
+learning to search with mctsnets
+scalable planning with tensorflow for hybrid nonlinear domains
+multi-focus image fusion via coupled sparse representation and dictionary learning
+training a large scale classifier with the quantum adiabatic algorithm
+a reinforcement learning model using neural networks for music sight reading learning problem
+weighted classification cascades for optimizing discovery significance in the higgsml challenge
+constructing category-specific models for monocular object-slam
+a tool set for the quick and efficient exploration of large document collections
+switching convolutional neural network for crowd counting
+deepcorrect : correcting dnn models against image distortions
+bit-planes : dense subpixel alignment of binary descriptors
+deep learning-guided image reconstruction from incomplete data
+sanet : structure-aware network for visual tracking
+learning to extract motion from videos in convolutional neural networks
+deeppermnet : visual permutation learning
+weighted contrastive divergence
+neural system identification for large populations separating `` what '' and `` where ''
+bayesian analysis for mirna and mrna interactions using expression data
+deep online convex optimization with gated games
+proximal methods for hierarchical sparse coding
+jointdnn : an efficient training and inference engine for intelligent mobile cloud computing services
+distributed stochastic optimization via adaptive stochastic gradient descent
+birdnest : bayesian inference for ratings-fraud detection
+vocabulary selection strategies for neural machine translation
+a chaid based performance prediction model in educational data mining
+mscm-life : multi-scale cross modal linear feature for horizon detection in maritime images
+d0 data handling operational experience
+algorithms for analysing the temporal structure of discourse
+communication-efficient distributed estimation and inference for transelliptical graphical models
+finding algebraic structure of care in time : a deep learning approach
+adaptive parallel tempering for stochastic maximum likelihood learning of rbms
+on the statistical efficiency of $ \ell_ { 1 , p } $ multi-task learning of gaussian graphical models
+interpretable & explorable approximations of black box models
+understanding ( dis ) similarity measures
+direct estimation of regional wall thicknesses via residual recurrent neural network
+monte-carlo optimizations for resource allocation problems in stochastic network systems
+machine translation systems in india
+earl : joint entity and relation linking for question answering over knowledge graphs
+a probabilistic generative grammar for semantic parsing
+a variational approximation for bayesian networks with discrete and continuous latent variables
+a probabilistic disease progression model for predicting future clinical outcome
+low-dimensional embeddings for interpretable anchor-based topic inference
+heuristic search for structural constraints in data association
+cat2000 : a large scale fixation dataset for boosting saliency research
+deep learning for passive synthetic aperture radar
+embedding deep networks into visual explanations
+kernel multivariate analysis framework for supervised subspace learning : a tutorial on linear and kernel multivariate methods
+the influence of intensity standardization on medical image registration
+neurorule : a connectionist approach to data mining
+experiments with neural networks for small and large scale authorship verification
+ontology-based fuzzy markup language agent for student and robot co-learning
+man is to computer programmer as woman is to homemaker ? debiasing word embeddings
+image restoration using autoencoding priors
+object recognition system design in computer vision : a universal approach
+automatic visual theme discovery from joint image and text corpora
+approximate inference with the variational holder bound
+fast , simple calcium imaging segmentation with fully convolutional networks
+neural decomposition of time-series data for effective generalization
+graying the black box : understanding dqns
+detectability thresholds and optimal algorithms for community structure in dynamic networks
+selection in scale-free small world
+wavelet-based deconvolution of ultrasonic signals in nondestructive evaluation
+training ensembles to detect adversarial examples
+recursion-free online multiple incremental/decremental analysis based on ridge support vector learning
+learning to refine object segments
+watch what you just said : image captioning with text-conditional attention
+ocean eddy identification and tracking using neural networks
+a modality lexicon and its use in automatic tagging
+simple bayesian algorithms for best arm identification
+deriving compact laws based on algebraic formulation of a data set
+improving language modelling with noise-contrastive estimation
+question answering on knowledge bases and text using universal schema and memory networks
+stochastic variance-reduced gradient descent for low-rank matrix recovery from linear measurements
+universal higher order grammar
+learning to attend , copy , and generate for session-based query suggestion
+learning neural word salience scores
+image retrieval based on lbp pyramidal multiresolution using reversible watermarking
+phone-aware neural language identification
+improving slot filling performance with attentive neural networks on dependency structures
+adapting stochastic search for real-time dynamic weighted constraint satisfaction
+squeeze-and-excitation networks
+self-guiding multimodal lstm - when we do not have a perfect training dataset for image captioning
+the best of both worlds : learning geometry-based 6d object pose estimation
+un-regularizing : approximate proximal point and faster stochastic algorithms for empirical risk minimization
+bayes-ball : the rational pastime ( for determining irrelevance and requisite information in belief networks and influence diagrams )
+accelerated distance computation with encoding tree for high dimensional data
+embedding web-based statistical translation models in cross-language information retrieval
+design of data-driven mathematical laws for optimal statistical classification systems
+hand3d : hand pose estimation using 3d neural network
+sort : second-order response transform for visual recognition
+self-learning cloud controllers : fuzzy q-learning for knowledge evolution
+medical image segmentation and localization using deformable templates
+bidirectional conditional generative adversarial networks
+generalized grounding graphs : a probabilistic framework for understanding grounded commands
+pieces-of-parts for supervoxel segmentation with global context : application to dce-mri tumour delineation
+feature selection parallel technique for remotely sensed imagery classification
+increasing behavioral complexity for evolved virtual creatures with the esp method
+gender identity and lexical variation in social media
+sample-relaxed two-dimensional color principal component analysis for face recognition and image reconstruction
+compact mathematical programs for dec-mdps with structured agent interactions
+how good are detection proposals , really ?
+omega model for human detection and counting for application in smart surveillance system
+sensor selection by linear programming
+linguistic markers of influence in informal interactions
+dropout as a bayesian approximation : representing model uncertainty in deep learning
+tighter variational representations of f-divergences via restriction to probability measures
+locally adaptive learning loss for semantic image segmentation
+automatic classification of cancerous tissue in laserendomicroscopy images of the oral cavity using deep learning
+online rules for control of false discovery rate and false discovery exceedance
+fast and accurate poisson denoising with optimized nonlinear diffusion
+a fast semidefinite approach to solving binary quadratic problems
+a supervised clustering approach for fmri-based inference of brain states
+probabilistic neural network training for semi-supervised classifiers
+total stability of kernel methods
+part-of-speech relevance weights for learning word embeddings
+shrec 2011 : robust feature detection and description benchmark
+a wake-sleep algorithm for recurrent , spiking neural networks
+fast mixing markov chains for strongly rayleigh measures , dpps , and constrained sampling
+tempering by subsampling
+phrase pair mappings for hindi-english statistical machine translation
+environment-independent task specifications via gltl
+putting self-supervised token embedding on the tables
+prior knowledge based mutation prioritization towards causal variant finding in rare disease
+sequence prediction with neural segmental models
+long-term correlation tracking using multi-layer hybrid features in sparse and dense environments
+medoids in almost linear time via multi-armed bandits
+a probabilistic model of compound nouns
+sensitive ants in solving the generalized vehicle routing problem
+causal inference in the presence of latent variables and selection bias
+scalable and distributed clustering via lightweight coresets
+the complexity of approximating a bethe equilibrium
+attributes for causal inference in longitudinal observational databases
+to swap or not to swap ? exploiting dependency word pairs for reordering in statistical machine translation
+focusing attention : towards accurate text recognition in natural images
+a new approach to speeding up topic modeling
+matrix approximation under local low-rank assumption
+integrating user and agent models : a deep task-oriented dialogue system
+semi-supervised word sense disambiguation with neural models
+microscopic advances with large-scale learning : stochastic optimization for cryo-em
+the adaptability of physiological systems optimizes performance : new directions in augmentation
+image fusion and re-modified spiht for fused image
+an easy to use repository for comparing and improving machine learning algorithm usage
+deep learning embeddings for discontinuous linguistic units
+learning policies for markov decision processes from data
+topometric localization with deep learning
+difference of convex functions programming applied to control with expert data
+probabilistic search for object segmentation and recognition
+a system of serial computation for classified rules prediction in non-regular ontology trees
+distributed stochastic variance reduced gradient methods and a lower bound for communication complexity
+a probabilistic calculus of actions
+a framework for decision-theoretic planning i : combining the situation calculus , conditional plans , probability and utility
+quickest moving object detection
+harnessing the deep net object models for enhancing human action recognition
+a lightweight front-end tool for interactive entity population
+on iterative hard thresholding methods for high-dimensional m-estimation
+bayesian crack detection in ultra high resolution multimodal images of paintings
+an empirical comparison of parsing methods for stanford dependencies
+image matting with normalized weight and semi-supervised learning
+combining spatio-temporal appearance descriptors and optical flow for human action recognition in video data
+a bayesian approach to learning bayesian networks with local structure
+how much more probable is `` much more probable '' ? verbal expressions for probability updates
+deep learning for identifying radiogenomic associations in breast cancer
+the fuzzy gene filter : a classifier performance assesment
+persian sentiment analyzer : a framework based on a novel feature selection method
+sparse arrays of signatures for online character recognition
+cheshire : an online algorithm for activity maximization in social networks
+employing fusion of learned and handcrafted features for unconstrained ear recognition
+representation of linguistic form and function in recurrent neural networks
+single- and multi-task architectures for surgical workflow challenge at m2cai 2016
+esdf : ensemble selection using diversity and frequency
+secured wireless communication using fuzzy logic based high speed public-key cryptography ( flhspkc )
+nonlinear embedding transform for unsupervised domain adaptation
+stochastic nonconvex optimization with large minibatches
+generic image classification approaches excel on face recognition
+unsupervised reverse domain adaptation for synthetic medical images via adversarial training
+gaussian mixture reduction using reverse kullback-leibler divergence
+generating approximate solutions to the ttp using a linear distance relaxation
+a distributed quasi-newton algorithm for empirical risk minimization with nonsmooth regularization
+automatic spine segmentation using convolutional neural network via redundant generation of class labels for 3d spine modeling
+fuzzy mixed integer optimization model for regression approach
+max-margin nonparametric latent feature models for link prediction
+gaussian and exponential lateral connectivity on distributed spiking neural network simulation
+multiplicative approximations , optimal hypervolume distributions , and the choice of the reference point
+scalable planning and learning for multiagent pomdps : extended version
+mining relevant interval rules
+optical flow fields : dense correspondence fields for highly accurate large displacement optical flow estimation
+graph based recommendations : from data representation to feature extraction and application
+worst-case vs average-case design for estimation from fixed pairwise comparisons
+learning like humans with deep symbolic networks
+learning deep representation for face alignment with auxiliary attributes
+enriching word vectors with subword information
+book : storing algorithm-invariant episodes for deep reinforcement learning
+auto-encoders : reconstruction versus compression
+fast low-rank matrix learning with nonconvex regularization
+advances in very deep convolutional neural networks for lvcsr
+corpus statistics in text classification of online data
+memcomputing np-complete problems in polynomial time using polynomial resources and collective states
+fast dempster-shafer clustering using a neural network structure
+pose guided structured region ensemble network for cascaded hand pose estimation
+trust-tech based methods for optimization and learning
+greedy block coordinate descent for large scale gaussian process regression
+alternating back-propagation for generator network
+multi-layer convolutional sparse modeling : pursuit and dictionary learning
