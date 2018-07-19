@@ -208,7 +208,7 @@ def train_epoches(dataset, model, n_epochs, teacher_forcing_ratio):
         training_loss_list = [0] * config.num_exams
         for batch_idx, data in enumerate(train_loader):
             topics = data[3] if config.use_topics else None
-            structure_abstracts = data[4] if config.use_labels else None
+            structure_abstracts = (data[4] if config.use_topics else data[3]) if config.use_labels else None
 
             input_variables = data[0]
             target_variables = data[1]

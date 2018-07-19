@@ -234,7 +234,7 @@ class headline2abstractdataset(Dataset):
     def _read_structure(self, structure_info):
         structure = []
         for i in range(len(structure_info)):
-            structure.append([headline2abstractdataset.structure_dict[s] for s, _ in structure_info[i]])
+            structure.append([headline2abstractdataset.structure_dict[s] for s in structure_info[i]])
 
         return structure
 
