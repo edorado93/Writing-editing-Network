@@ -25,10 +25,10 @@ class SmallDataset(CommonConfig):
     relative_gen_path = '/data/small-json/fake%d.dat'
 
 class LargeDataset(CommonConfig):
-    relative_data_path = '/data/large-json/train.dat'
-    relative_dev_path = '/data/large-json/dev.dat'
-    relative_test_path = '/data/large-json/test.dat'
-    relative_gen_path = '/data/large-json/fake%d.dat'
+    relative_data_path = '/data/temp/train.dat'
+    relative_dev_path = '/data/temp/dev.dat'
+    relative_test_path = '/data/temp/test.dat'
+    relative_gen_path = '/data/temp/fake%d.dat'
 
 class SmallTopicsConfig1(SmallDatasetWithTopics):
     emsize = 512
@@ -158,7 +158,7 @@ class LabelConfig1(LargeDataset):
     lr = 0.0001
     pretrained = None
     use_labels = True
-    experiment_name = "lg-with-topics-lr-0.0001"
+    experiment_name = "lg-with-labels-lr-0.0001"
 
 class LabelConfig2(LargeDataset):
     emsize = 512
@@ -166,7 +166,7 @@ class LabelConfig2(LargeDataset):
     lr = 0.0001
     pretrained = 'embeddings/complete-512.vec'
     use_labels = True
-    experiment_name = "lg-with-topics-lr-0.0001-WE-512"
+    experiment_name = "lg-with-labels-lr-0.0001-WE-512"
 
 class LabelConfig3(LargeDataset):
     emsize = 300
@@ -174,16 +174,19 @@ class LabelConfig3(LargeDataset):
     lr = 0.0001
     pretrained = 'embeddings/complete.vec'
     use_labels = True
-    experiment_name = "lg-with-topics-lr-0.0001-WE-300"
+    experiment_name = "lg-with-labels-lr-0.0001-WE-300"
 
 class LabelAndTopics1(LabelConfig1):
     use_topics = True
+    experiment_name = "lg-with-labels-and-topics-lr-0.0001-WE-300"
 
 class LabelAndTopics2(LabelConfig2):
     use_topics = True
+    experiment_name = "lg-with-labels-and-topics-lr-0.0001-WE-300"
 
 class LabelAndTopics3(LabelConfig3):
     use_topics = True
+    experiment_name = "lg-with-labels-and-topics-lr-0.0001-WE-300"
 
 
 def print_config(config):
@@ -211,9 +214,9 @@ configuration = {
                  "la1": LabelConfig1(),
                  "la2": LabelConfig1(),
                  "la3": LabelConfig1(),
-                 "l_and_t1": LabelConfig1(),
-                 "l_and_t2": LabelConfig1(),
-                 "l_and_t3": LabelConfig1(),}
+                 "l_and_t1": LabelAndTopics1(),
+                 "l_and_t2": LabelAndTopics2(),
+                 "l_and_t3": LabelAndTopics3()}
 
 def get_conf(name):
     return configuration[name]
