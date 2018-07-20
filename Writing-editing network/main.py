@@ -65,13 +65,19 @@ if config.use_topics or config.use_labels:
 title_encoder_rnn_dim = config.emsize + (config.use_topics * abstracts.max_context_length) * config.context_dim
 abstract_encoder_rnn_dim = config.emsize + (config.use_labels + config.use_topics * abstracts.max_context_length) * config.context_dim
 
+structure_labels = {"introduction" : abstracts.vectorizer.context_vectorizer["introduction"],
+                    "body" : abstracts.vectorizer.context_vectorizer["body"],
+                    "conclusion": abstracts.vectorizer.context_vectorizer["conclusion"],
+                    "full_stop": abstracts.vectorizer.word2idx["."],
+                    "question_mark": abstracts.vectorizer.word2idx["?"]}
+
 encoder_title = EncoderRNN(vocab_size, embedding, abstracts.head_len, title_encoder_rnn_dim, abstract_encoder_rnn_dim, input_dropout_p=config.dropout,
                      n_layers=config.nlayers, bidirectional=config.bidirectional, rnn_cell=config.cell)
 encoder = EncoderRNN(vocab_size, embedding, abstracts.abs_len, abstract_encoder_rnn_dim, abstract_encoder_rnn_dim, input_dropout_p=config.dropout, variable_lengths = False,
                   n_layers=config.nlayers, bidirectional=config.bidirectional, rnn_cell=config.cell)
 decoder = DecoderRNNFB(vocab_size, embedding, abstracts.abs_len, abstract_encoder_rnn_dim, sos_id=2, eos_id=1,
                      n_layers=config.nlayers, rnn_cell=config.cell, bidirectional=config.bidirectional,
-                     input_dropout_p=config.dropout, dropout_p=config.dropout)
+                     input_dropout_p=config.dropout, dropout_p=config.dropout, labels=structure_labels)
 model = FbSeq2seq(encoder_title, encoder, context_encoder, decoder)
 total_params = sum(x.size()[0] * x.size()[1] if len(x.size()) > 1 else x.size()[0] for x in model.parameters())
 print('Model total parameters:', total_params, flush=True)

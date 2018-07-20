@@ -126,9 +126,6 @@ class Vectorizer:
         return vcorpus
 
 class headline2abstractdataset(Dataset):
-
-    structure_dict = {"introduction": 1, "body": 2, "conclusion": 3}
-
     def __init__(self, path, vectorizer, USE_CUDA=torch.cuda.is_available(), max_len=200, use_topics=False, use_structure_info=False):
         self.use_topics = use_topics
         self.use_structure_info = use_structure_info
@@ -189,9 +186,9 @@ class headline2abstractdataset(Dataset):
                     labels.append(j["labels"])
                 i += 1
         self.vectorizer.context_vectorizer['algorithm'] = 0
-        self.vectorizer.context_vectorizer['introduction'] = 0
-        self.vectorizer.context_vectorizer['body'] = 0
-        self.vectorizer.context_vectorizer['conclusion'] = 0
+        self.vectorizer.context_vectorizer['introduction'] = 1
+        self.vectorizer.context_vectorizer['body'] = 2
+        self.vectorizer.context_vectorizer['conclusion'] = 3
         corpus = self._read_data(headlines, abstracts)
         topics_v = self._read_topics(topics)
         abstract_structures = self._read_structure(labels)
@@ -238,10 +235,10 @@ class headline2abstractdataset(Dataset):
     def _read_structure(self, structure_info):
         structure = []
         for i in range(len(structure_info)):
-            tokenised = [headline2abstractdataset.structure_dict[s] for s in structure_info[i]]
+            tokenised = [self.vectorizer.context_vectorizer[s] for s in structure_info[i]]
             if self.vectorizer.start_end_tokens:
-                tokenised.append(headline2abstractdataset.structure_dict['conclusion'])
-            tokenised = [headline2abstractdataset.structure_dict['introduction']] + tokenised
+                tokenised.append(self.vectorizer.context_vectorizer['conclusion'])
+            tokenised = [self.vectorizer.context_vectorizer['introduction']] + tokenised
             structure.append(tokenised)
 
         return structure

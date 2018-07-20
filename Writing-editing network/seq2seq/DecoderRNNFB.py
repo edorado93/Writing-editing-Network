@@ -8,6 +8,7 @@ import torch.nn.functional as F
 
 from .attention import Attention
 from .baseRNN import BaseRNN
+import random
 
 
 class Gate(nn.Module):
@@ -36,10 +37,15 @@ class DecoderRNNFB(BaseRNN):
     KEY_ATTN_SCORE = 'attention_score'
     KEY_LENGTH = 'length'
     KEY_SEQUENCE = 'sequence'
+    structure_transitions = {("introduction", "introduction"): 0.51,
+                             ("introduction", "body"): 0.48,
+                             ("introduction", "conclusion"): 0.01,
+                             ("body", "body"): 0.745,
+                             ("body", "conclusion"): 0.255}
 
     def __init__(self, vocab_size, embedding, max_len, embed_size,
                  sos_id, eos_id, n_layers=1, rnn_cell='gru', bidirectional=False,
-                 input_dropout_p=0, dropout_p=0):
+                 input_dropout_p=0, dropout_p=0, labels=None):
         hidden_size = embed_size
         if bidirectional:
             hidden_size *= 2
@@ -48,6 +54,7 @@ class DecoderRNNFB(BaseRNN):
                 input_dropout_p, dropout_p,
                 n_layers, rnn_cell)
 
+        self.labels = labels
         self.bidirectional_encoder = bidirectional
         self.rnn = self.rnn_cell(embed_size, hidden_size, n_layers, batch_first=True, dropout=dropout_p)
         self.output_size = vocab_size
@@ -151,6 +158,8 @@ class DecoderRNNFB(BaseRNN):
                 return symbols
 
             decoder_input = inputs[:, 0].unsqueeze(1)
+            structural_embedding =  torch.tensor(self.labels["introduction"]).expand(inputs.shape[0], 1)
+            if inputs.cuda(): structural_embedding = structural_embedding.cuda()
             for di in range(max_length):
 
                 decoder_output, decoder_output_state, decoder_hidden, step_attn = \
@@ -164,6 +173,24 @@ class DecoderRNNFB(BaseRNN):
                 symbols = decode(di, step_output, step_output_state, step_attn)
                 decoder_input = symbols
 
+                # This means that the sentence has ended and we have to resample
+                if symbols.data == self.labels["full_stop"] or symbols.data == self.labels["question_mark"]:
+                    random_sample = random.random()
+                    # Nothing changes
+                    if structural_embedding[0].data == self.labels["conclusion"]:
+                        pass
+                    elif structural_embedding[0].data == self.labels["introduction"]:
+                        if random_sample >= 0.99:
+                            structural_embedding =  torch.tensor(self.labels["conclusion"]).expand(inputs.shape[0], 1)
+                        elif random_sample < 0.51:
+                            structural_embedding =  torch.tensor(self.labels["body"]).expand(inputs.shape[0], 1)
+                        else:
+                            pass
+                    else:
+                        if random_sample >= 0.745:
+                           structural_embedding =  torch.tensor(self.labels["conclusion"]).expand(inputs.shape[0], 1)
+                        else:
+                            pass
             decoder_outputs = torch.stack(decoder_outputs, dim=1)
             decoder_output_states = torch.stack(decoder_output_states, dim=1)
             ret_dict[DecoderRNNFB.KEY_SEQUENCE] = sequence_symbols
