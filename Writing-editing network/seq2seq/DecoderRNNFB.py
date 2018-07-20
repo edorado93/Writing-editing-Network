@@ -102,6 +102,7 @@ class DecoderRNNFB(BaseRNN):
 
         if use_teacher_forcing:
             decoder_input = inputs[:, :-1]
+            structural_embedding = structural_embedding[:, :-1]
             decoder_outputs, decoder_output_states, decoder_hidden, attn = \
                 self.forward_step(decoder_input, pg_encoder_states,
                                 decoder_hidden, encoder_outputs, topical_embedding, structural_embedding)

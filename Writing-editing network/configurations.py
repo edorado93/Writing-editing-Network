@@ -158,6 +158,7 @@ class LabelConfig1(LargeDataset):
     lr = 0.0001
     pretrained = None
     use_labels = True
+    use_topics = False
     experiment_name = "lg-with-labels-lr-0.0001"
 
 class LabelConfig2(LargeDataset):
@@ -166,6 +167,7 @@ class LabelConfig2(LargeDataset):
     lr = 0.0001
     pretrained = 'embeddings/complete-512.vec'
     use_labels = True
+    use_topics = False
     experiment_name = "lg-with-labels-lr-0.0001-WE-512"
 
 class LabelConfig3(LargeDataset):
@@ -174,6 +176,7 @@ class LabelConfig3(LargeDataset):
     lr = 0.0001
     pretrained = 'embeddings/complete.vec'
     use_labels = True
+    use_topics = False
     experiment_name = "lg-with-labels-lr-0.0001-WE-300"
 
 class LabelAndTopics1(LabelConfig1):
@@ -190,10 +193,10 @@ class LabelAndTopics3(LabelConfig3):
 
 
 def print_config(config):
-    print("[batch_size = {}, dataparallel = {}, epochs = {}, log_interval = {}, patience = {}, relative_data_path = {}, relative_dev_path = {}, emsize = {},context_dim = {}, learning rate = {}, pretrained = {}, use_topics = {}, experiment_name = {}]".format(config.batch_size
+    print("[batch_size = {}, dataparallel = {}, epochs = {}, log_interval = {}, patience = {}, relative_data_path = {}, relative_dev_path = {}, emsize = {},context_dim = {}, learning rate = {}, pretrained = {}, use_topics = {}, use_structure_labels = {}, experiment_name = {}]".format(config.batch_size
           , config.dataparallel, config.epochs, config.log_interval, config.patience,
           config.relative_data_path, config.relative_dev_path, config.emsize, config.context_dim,
-          config.lr, config.pretrained, config.use_topics, config.experiment_name), flush=True)
+          config.lr, config.pretrained, config.use_topics, config.use_labels, config.experiment_name), flush=True)
 
 configuration = {
                  "st1": SmallTopicsConfig1(),

@@ -52,25 +52,24 @@ data_path = cwd + config.relative_data_path
 abstracts = headline2abstractdataset(data_path, vectorizer, args.cuda, max_len=1000, use_topics=config.use_topics, use_structure_info=config.use_labels)
 print("number of training examples: %d" % len(abstracts))
 
+context_encoder = None
 vocab_size = abstracts.vectorizer.vocabulary_size
 embedding = nn.Embedding(vocab_size, config.emsize, padding_idx=0)
 
 if config.pretrained:
     embedding = load_embeddings(embedding, abstracts.vectorizer.word2idx, config.pretrained, config.emsize)
 
-if config.use_topics:
+if config.use_topics or config.use_labels:
     context_encoder = ContextEncoder(config.context_dim, len(vectorizer.context_vectorizer), config.emsize)
-    max_topics = abstracts.max_context_length
-    new_embedding_size = max_topics * config.context_dim + config.emsize
-else:
-    context_encoder = None
-    new_embedding_size = config.emsize
 
-encoder_title = EncoderRNN(vocab_size, embedding, abstracts.head_len, new_embedding_size, input_dropout_p=config.dropout,
+title_encoder_rnn_dim = config.emsize + (config.use_topics * abstracts.max_context_length) * config.context_dim
+abstract_encoder_rnn_dim = config.emsize + (config.use_labels + config.use_topics * abstracts.max_context_length) * config.context_dim
+
+encoder_title = EncoderRNN(vocab_size, embedding, abstracts.head_len, title_encoder_rnn_dim, abstract_encoder_rnn_dim, input_dropout_p=config.dropout,
                      n_layers=config.nlayers, bidirectional=config.bidirectional, rnn_cell=config.cell)
-encoder = EncoderRNN(vocab_size, embedding, abstracts.abs_len, new_embedding_size, input_dropout_p=config.dropout, variable_lengths = False,
+encoder = EncoderRNN(vocab_size, embedding, abstracts.abs_len, abstract_encoder_rnn_dim, abstract_encoder_rnn_dim, input_dropout_p=config.dropout, variable_lengths = False,
                   n_layers=config.nlayers, bidirectional=config.bidirectional, rnn_cell=config.cell)
-decoder = DecoderRNNFB(vocab_size, embedding, abstracts.abs_len, new_embedding_size, sos_id=2, eos_id=1,
+decoder = DecoderRNNFB(vocab_size, embedding, abstracts.abs_len, abstract_encoder_rnn_dim, sos_id=2, eos_id=1,
                      n_layers=config.nlayers, rnn_cell=config.cell, bidirectional=config.bidirectional,
                      input_dropout_p=config.dropout, dropout_p=config.dropout)
 model = FbSeq2seq(encoder_title, encoder, context_encoder, decoder)
@@ -165,7 +164,7 @@ def bleu_scoring(title_and_abstracts, drafts):
     for i in range(3):
         scores.append([])
     for i in range(config.num_exams):
-        final_scores = validation_eval.evaluate(live=True, cand=cands[i], ref=refs, verbose=False)
+        final_scores = validation_eval.evaluate(live=True, cand=cands[i], ref=refs)
         for j in range(3):
             scores[j].append(final_scores[fields[j]])
     return scores
@@ -176,13 +175,17 @@ def evaluate(validation_dataset, model, teacher_forcing_ratio):
     epoch_loss_list = [0] * config.num_exams
     title_and_abstracts = []
     drafts = [[] for _ in range(config.num_exams)]
-    for batch_idx, (source, target, input_lengths, topics, structure_abstracts) in enumerate(validation_loader):
-        input_variables = source
-        target_variables = target
+    for batch_idx, data in enumerate(validation_loader):
+        topics = data[3] if config.use_topics else None
+        structure_abstracts = (data[4] if config.use_topics else data[3]) if config.use_labels else None
+
+        input_variables = data[0]
+        target_variables = data[1]
+        input_lengths = data[2]
         # train model
         loss_list, batch_sentences, batch_drafts = train_batch(input_variables, input_lengths,
                                 target_variables, topics, structure_abstracts, model, teacher_forcing_ratio, is_eval=True)
-        num_examples = len(source)
+        num_examples = len(input_variables)
         title_and_abstracts.extend(batch_sentences)
         for i in range(config.num_exams):
             epoch_loss_list[i] += loss_list[i] * num_examples
@@ -217,7 +220,7 @@ def train_epoches(dataset, model, n_epochs, teacher_forcing_ratio):
             loss_list = train_batch(input_variables, input_lengths,
                                target_variables, topics, structure_abstracts, model, teacher_forcing_ratio)
             # Record average loss
-            num_examples = len(source)
+            num_examples = len(input_variables)
             epoch_examples_total += num_examples
             for i in range(config.num_exams):
                 training_loss_list[i] += loss_list[i] * num_examples

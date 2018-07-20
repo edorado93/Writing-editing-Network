@@ -9,6 +9,8 @@ class ContextEncoder(nn.Module):
         self.tanh = nn.Tanh()
 
     def forward(self, topics, structure_abstracts):
+        non_linearity1 = None
+        non_linearity2 = None
         if topics is not None:
             embedded = self.embedding(topics)
             embedded = embedded.reshape(embedded.shape[0], 1, -1)

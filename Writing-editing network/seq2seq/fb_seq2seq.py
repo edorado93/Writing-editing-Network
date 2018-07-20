@@ -24,12 +24,16 @@ class FbSeq2seq(nn.Module):
         else:
             topical_embedding, structural_embedding = None, None
 
-        encoder_outputs, encoder_hidden = self.encoder_title(input_variable, input_lengths, topical_embedding=topical_embedding, structural_embedding=structural_embedding)
+        # We don't have to pass the structure embedding to the title encoder. The structure is only relevant for the abstract
+        encoder_outputs, encoder_hidden = self.encoder_title(input_variable, input_lengths, topical_embedding=topical_embedding)
         if prev_generated_seq is None:
             pg_encoder_states = None
             pg_encoder_hidden = None
         else:
-            pg_encoder_states, pg_encoder_hidden = self.encoder(prev_generated_seq, topical_embedding=topical_embedding, structural_embedding=structural_embedding)
+            # The generated sequence has length one shorter than the original abstract. Hence we have to change the structural embedding as well.
+            # The decoder doesn't generate the first word of the abstract. Hence, we ignore the label for the first word
+            pg_structural_embedding = structural_embedding[:, 1:]
+            pg_encoder_states, pg_encoder_hidden = self.encoder(prev_generated_seq, topical_embedding=topical_embedding, structural_embedding=pg_structural_embedding)
         result = self.decoder(inputs=target_variable,
                               encoder_hidden=encoder_hidden,
                               encoder_outputs=encoder_outputs,

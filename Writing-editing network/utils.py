@@ -168,7 +168,7 @@ class headline2abstractdataset(Dataset):
         corpus = []
         for source, target, vectorized_topics, structure_abstract in old:
             vectorized_topics = self.pad_sentence_vector(vectorized_topics, self.max_context_length, pad_value=self.vectorizer.context_vectorizer['algorithm'])
-            team = [len(source), len(target), self.pad_sentence_vector(source, self.head_len), self.pad_sentence_vector(target, self.abs_len), vectorized_topics, structure_abstract]
+            team = [len(source), len(target), self.pad_sentence_vector(source, self.head_len), self.pad_sentence_vector(target, self.abs_len), vectorized_topics, self.pad_sentence_vector(structure_abstract, self.abs_len, pad_value=3)]
             corpus.append(team)
         self.data = corpus
 
@@ -189,6 +189,9 @@ class headline2abstractdataset(Dataset):
                     labels.append(j["labels"])
                 i += 1
         self.vectorizer.context_vectorizer['algorithm'] = 0
+        self.vectorizer.context_vectorizer['introduction'] = 0
+        self.vectorizer.context_vectorizer['body'] = 0
+        self.vectorizer.context_vectorizer['conclusion'] = 0
         corpus = self._read_data(headlines, abstracts)
         topics_v = self._read_topics(topics)
         abstract_structures = self._read_structure(labels)
@@ -230,11 +233,16 @@ class headline2abstractdataset(Dataset):
                     vectorized_topics.append(self.vectorizer.context_vectorizer[t])
                 self.max_context_length = max(self.max_context_length, len(vectorized_topics))
             topics_v.append(vectorized_topics)
+        return topics_v
 
     def _read_structure(self, structure_info):
         structure = []
         for i in range(len(structure_info)):
-            structure.append([headline2abstractdataset.structure_dict[s] for s in structure_info[i]])
+            tokenised = [headline2abstractdataset.structure_dict[s] for s in structure_info[i]]
+            if self.vectorizer.start_end_tokens:
+                tokenised.append(headline2abstractdataset.structure_dict['conclusion'])
+            tokenised = [headline2abstractdataset.structure_dict['introduction']] + tokenised
+            structure.append(tokenised)
 
         return structure
 
@@ -243,9 +251,9 @@ class headline2abstractdataset(Dataset):
         source = torch.LongTensor(source).cuda() if self.USE_CUDA else torch.LongTensor(source)
         target = torch.LongTensor(target).cuda() if self.USE_CUDA else torch.LongTensor(source)
         topics = (torch.LongTensor(topics).cuda() if self.USE_CUDA else torch.LongTensor(source)) if self.use_topics else None
-        structure_abstracts = (torch.LongTensor(structure_abstracts).cuda() if self.USE_CUDA else torch.LongTensor(source)) if self.use_topics else None
+        structure_abstracts = (torch.LongTensor(structure_abstracts).cuda() if self.USE_CUDA else torch.LongTensor(source)) if self.use_structure_info else None
 
-        ret = [source, target, len_t]
+        ret = [source, target, len_s]
         if self.use_topics:
             ret.append(topics)
         if self.use_structure_info:

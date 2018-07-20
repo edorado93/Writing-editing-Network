@@ -6,7 +6,7 @@ from .baseRNN import BaseRNN
 
 
 class EncoderRNN(BaseRNN):
-    def __init__(self, vocab_size, embedding, max_len, hidden_size,
+    def __init__(self, vocab_size, embedding, max_len, input_length, hidden_size,
                 input_dropout_p=0, dropout_p=0, n_layers=1,
                 bidirectional=False, rnn_cell='gru', variable_lengths=True): 
         super(EncoderRNN, self).__init__(vocab_size, max_len, hidden_size,
@@ -14,7 +14,7 @@ class EncoderRNN(BaseRNN):
 
         self.variable_lengths = variable_lengths
         self.embedding = embedding
-        self.rnn = self.rnn_cell(hidden_size, hidden_size, n_layers,
+        self.rnn = self.rnn_cell(input_length, hidden_size, n_layers,
                                  batch_first=True, bidirectional=bidirectional, dropout=dropout_p)
 
     def forward(self, input_var, input_lengths=None, topical_embedding=None, structural_embedding=None):
