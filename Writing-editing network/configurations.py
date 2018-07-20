@@ -12,6 +12,15 @@ class CommonConfig(object):
     log_interval = 1000
     patience = 5
 
+    #Common Configuration that is usually played with.
+    # Will remain the same unless overridden
+    emsize = 512
+    context_dim = 128
+    lr = 0.0001
+    pretrained = None
+    use_topics = False
+    use_labels = False
+
 class SmallDatasetWithTopics(CommonConfig):
     relative_data_path = '/data/small-json-topics/train.dat'
     relative_dev_path = '/data/small-json-topics/dev.dat'
@@ -31,152 +40,86 @@ class LargeDataset(CommonConfig):
     relative_gen_path = '/data/temp/fake%d.dat'
 
 class SmallTopicsConfig1(SmallDatasetWithTopics):
-    emsize = 512
-    context_dim = 128
-    lr = 0.0001
-    pretrained = None
-    use_topics = False
     experiment_name = "smt-lr-0.0001"
 
 class SmallTopicsConfig2(SmallDatasetWithTopics):
-    emsize = 512
-    context_dim = 128
-    lr = 0.0001
     pretrained = 'embeddings/complete-512.vec'
-    use_topics = False
     experiment_name = "smt-lr-0.0001-WE-512"
 
 class SmallTopicsConfig3(SmallDatasetWithTopics):
     emsize = 300
-    context_dim = 128
-    lr = 0.0001
     pretrained = 'embeddings/complete.vec'
-    use_topics = False
     experiment_name = "smt-lr-0.0001-WE-300"
 
 class SmallTopicsConfig4(SmallDatasetWithTopics):
-    emsize = 512
-    context_dim = 128
-    lr = 0.0001
-    pretrained = None
     use_topics = True
     experiment_name = "smt-with-topics-lr-0.0001"
 
 class SmallTopicsConfig5(SmallDatasetWithTopics):
-    emsize = 512
-    context_dim = 128
-    lr = 0.0001
     pretrained = 'embeddings/complete-512.vec'
     use_topics = True
     experiment_name = "smt-with-topics-lr-0.0001-WE-512"
 
 class SmallTopicsConfig6(SmallDatasetWithTopics):
     emsize = 300
-    context_dim = 128
-    lr = 0.0001
     pretrained = 'embeddings/complete.vec'
     use_topics = True
     experiment_name = "smt-with-topics-lr-0.0001-WE-300"
 
 
 class SmallConfig1(SmallDataset):
-    emsize = 512
-    context_dim = 128
-    lr = 0.0001
-    pretrained = None
-    use_topics = False
     experiment_name = "sm-lr-0.0001"
 
 class SmallConfig2(SmallDataset):
-    emsize = 512
-    context_dim = 128
-    lr = 0.0001
     pretrained = 'embeddings/complete-512.vec'
-    use_topics = False
     experiment_name = "sm-lr-0.0001-WE-512"
 
 class SmallConfig3(SmallDataset):
     emsize = 300
-    context_dim = 128
-    lr = 0.0001
     pretrained = 'embeddings/complete.vec'
-    use_topics = False
     experiment_name = "sm-lr-0.0001-WE-300"
 
 
 class LargeConfig1(LargeDataset):
-    emsize = 512
-    context_dim = 128
-    lr = 0.0001
-    pretrained = None
-    use_topics = False
     experiment_name = "lg-lr-0.0001"
 
 class LargeConfig2(LargeDataset):
-    emsize = 512
-    context_dim = 128
-    lr = 0.0001
     pretrained = 'embeddings/complete-512.vec'
-    use_topics = False
     experiment_name = "lg-lr-0.0001-WE-512"
 
 class LargeConfig3(LargeDataset):
     emsize = 300
-    context_dim = 128
-    lr = 0.0001
     pretrained = 'embeddings/complete.vec'
-    use_topics = False
     experiment_name = "lg-lr-0.0001-WE-300"
 
 class LargeConfig4(LargeDataset):
-    emsize = 512
-    context_dim = 128
-    lr = 0.0001
-    pretrained = None
     use_topics = True
     experiment_name = "lg-with-topics-lr-0.0001"
 
 class LargeConfig5(LargeDataset):
-    emsize = 512
-    context_dim = 128
-    lr = 0.0001
     pretrained = 'embeddings/complete-512.vec'
     use_topics = True
     experiment_name = "lg-with-topics-lr-0.0001-WE-512"
 
 class LargeConfig6(LargeDataset):
     emsize = 300
-    context_dim = 128
-    lr = 0.0001
     pretrained = 'embeddings/complete.vec'
     use_topics = True
     experiment_name = "lg-with-topics-lr-0.0001-WE-300"
 
 class LabelConfig1(LargeDataset):
-    emsize = 512
-    context_dim = 128
-    lr = 0.0001
-    pretrained = None
     use_labels = True
-    use_topics = False
     experiment_name = "lg-with-labels-lr-0.0001"
 
 class LabelConfig2(LargeDataset):
-    emsize = 512
-    context_dim = 128
-    lr = 0.0001
     pretrained = 'embeddings/complete-512.vec'
     use_labels = True
-    use_topics = False
     experiment_name = "lg-with-labels-lr-0.0001-WE-512"
 
 class LabelConfig3(LargeDataset):
     emsize = 300
-    context_dim = 128
-    lr = 0.0001
     pretrained = 'embeddings/complete.vec'
     use_labels = True
-    use_topics = False
     experiment_name = "lg-with-labels-lr-0.0001-WE-300"
 
 class LabelAndTopics1(LabelConfig1):
