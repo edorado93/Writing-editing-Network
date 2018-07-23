@@ -113,19 +113,25 @@ class DecoderRNNFB(BaseRNN):
             # select a word that doesn't occur in the last window of 5 words. This
             # if to avoid repetition and introduce some randomness.
             def penalise_repetitions(step_output):
+                output = []
                 if random.random() < 0.3:
                     word_weights = step_output.squeeze().data.div(1.).exp().cpu()
-                    word_idx = torch.multinomial(word_weights, 1)[0]
-                    if step_output.is_cuda:
-                        return word_idx.view(1,1).cuda()
-                    return word_idx.view(1,1)
+                    word_idx = torch.multinomial(word_weights, 1)
+                    return word_idx.view(step_output.shape[0], 1).cuda() if step_output.is_cuda else word_idx.view(step_output.shape[0], 1)
+                symbols = step_output.topk(10)[1]
+                for i, s in enumerate(symbols):
+                    previous_window = [t[i] for t in sequence_symbols[-5:]]
+                    use_first = True
+                    for sym in s:
+                        if sym not in previous_window:
+                            output.append(sym)
+                            use_first = False
+                            break
+                    if use_first:
+                        output.append(s[0])
 
-                symbols = step_output.topk(10)[1].squeeze()
-                previous_window = sequence_symbols[-5:]
-                for s in symbols:
-                    if s not in previous_window:
-                        return s.view(1,1)
-                return symbols[0]
+                output = torch.stack(output).unsqueeze(1)
+                return output.cuda() if step_output.is_cuda else output
 
             def decode(step, step_output, step_output_state=None, step_attn=None):
                 if step_output_state is not None:
