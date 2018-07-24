@@ -28,11 +28,14 @@ class FbSeq2seq(nn.Module):
         encoder_outputs, encoder_hidden = self.encoder_title(input_variable, input_lengths, topical_embedding=topical_embedding)
         if prev_generated_seq is None:
             pg_encoder_states = None
-            pg_encoder_hidden = None
         else:
             # The generated sequence has length one shorter than the original abstract. Hence we have to change the structural embedding as well.
-            # The decoder doesn't generate the first word of the abstract. Hence, we ignore the label for the first word
-            pg_structural_embedding = structural_embedding[:, 1:]
+            # The decoder doesn't generate the first word of the abstract. Hence, we ignore the label for the first word during TRAINING.
+            # During testing, we have the number of structure labels equal to the length of the generated sequence. No need to trim then
+            if structural_embedding.shape[1] != prev_generated_seq.shape[1]:
+                pg_structural_embedding = structural_embedding[:, 1:]
+            else:
+                pg_structural_embedding = structural_embedding
             pg_encoder_states, pg_encoder_hidden = self.encoder(prev_generated_seq, topical_embedding=topical_embedding, structural_embedding=pg_structural_embedding)
         result = self.decoder(inputs=target_variable,
                               encoder_hidden=encoder_hidden,

@@ -37,15 +37,11 @@ class DecoderRNNFB(BaseRNN):
     KEY_ATTN_SCORE = 'attention_score'
     KEY_LENGTH = 'length'
     KEY_SEQUENCE = 'sequence'
-    structure_transitions = {("introduction", "introduction"): 0.51,
-                             ("introduction", "body"): 0.48,
-                             ("introduction", "conclusion"): 0.01,
-                             ("body", "body"): 0.745,
-                             ("body", "conclusion"): 0.255}
+    KEY_GENERATED_STRUCTURE_LABELS = 'gen_labels'
 
     def __init__(self, vocab_size, embedding, max_len, embed_size,
                  sos_id, eos_id, n_layers=1, rnn_cell='gru', bidirectional=False,
-                 input_dropout_p=0, dropout_p=0, labels=None):
+                 input_dropout_p=0, dropout_p=0, labels=None, context_model=None, use_labels=False, use_cuda=False):
         hidden_size = embed_size
         if bidirectional:
             hidden_size *= 2
@@ -69,6 +65,12 @@ class DecoderRNNFB(BaseRNN):
         self.fc = Gate(self.hidden_size)
         self.out1 = nn.Linear(self.hidden_size, self.output_size)
         self.out2 = nn.Linear(self.hidden_size, self.output_size)
+
+        # Structural embedding variables requirement during test time
+        self.context_model = context_model
+        self.use_labels = use_labels
+        self.use_cuda = use_cuda
+
 
     def forward_step(self, input_var, pg_encoder_states, hidden, encoder_outputs, topical_embedding=None, structural_embedding=None):
         batch_size = input_var.size(0)
@@ -117,6 +119,7 @@ class DecoderRNNFB(BaseRNN):
             decoder_outputs = []
             decoder_output_states = []
             sequence_symbols = []
+            generated_structure_labels = []
             lengths = np.array([max_length] * batch_size)
 
             # 30 percent of the times select a random word, otherwise
@@ -127,7 +130,7 @@ class DecoderRNNFB(BaseRNN):
                 if random.random() < 0.3:
                     word_weights = step_output.squeeze().data.div(1.).exp().cpu()
                     word_idx = torch.multinomial(word_weights, 1)
-                    return word_idx.view(step_output.shape[0], 1).cuda() if step_output.is_cuda else word_idx.view(step_output.shape[0], 1)
+                    return word_idx.view(step_output.shape[0], 1).cuda() if self.use_cuda else word_idx.view(step_output.shape[0], 1)
                 symbols = step_output.topk(10)[1]
                 for i, s in enumerate(symbols):
                     previous_window = [t[i] for t in sequence_symbols[-5:]]
@@ -141,7 +144,7 @@ class DecoderRNNFB(BaseRNN):
                         output.append(s[0])
 
                 output = torch.stack(output).unsqueeze(1)
-                return output.cuda() if step_output.is_cuda else output
+                return output.cuda() if self.use_cuda else output
 
             def decode(step, step_output, step_output_state=None, step_attn=None):
                 if step_output_state is not None:
@@ -158,10 +161,11 @@ class DecoderRNNFB(BaseRNN):
                 return symbols
 
             decoder_input = inputs[:, 0].unsqueeze(1)
-            structural_embedding =  torch.tensor(self.labels["introduction"]).expand(inputs.shape[0], 1)
-            if inputs.cuda(): structural_embedding = structural_embedding.cuda()
+            structural_embedding =  None
+            gen_label = None
             for di in range(max_length):
-
+                structural_embedding, gen_label = self._get_new_structure_label(decoder_input, structural_embedding, inputs.shape[0], gen_label)
+                generated_structure_labels.append(gen_label)
                 decoder_output, decoder_output_state, decoder_hidden, step_attn = \
                     self.forward_step(decoder_input, pg_encoder_states, decoder_hidden,
                                       encoder_outputs, topical_embedding, structural_embedding)
@@ -172,31 +176,50 @@ class DecoderRNNFB(BaseRNN):
                 step_output_state = decoder_output_state.squeeze(1)
                 symbols = decode(di, step_output, step_output_state, step_attn)
                 decoder_input = symbols
-
-                # This means that the sentence has ended and we have to resample
-                if symbols.data == self.labels["full_stop"] or symbols.data == self.labels["question_mark"]:
-                    random_sample = random.random()
-                    # Nothing changes
-                    if structural_embedding[0].data == self.labels["conclusion"]:
-                        pass
-                    elif structural_embedding[0].data == self.labels["introduction"]:
-                        if random_sample >= 0.99:
-                            structural_embedding =  torch.tensor(self.labels["conclusion"]).expand(inputs.shape[0], 1)
-                        elif random_sample < 0.51:
-                            structural_embedding =  torch.tensor(self.labels["body"]).expand(inputs.shape[0], 1)
-                        else:
-                            pass
-                    else:
-                        if random_sample >= 0.745:
-                           structural_embedding =  torch.tensor(self.labels["conclusion"]).expand(inputs.shape[0], 1)
-                        else:
-                            pass
             decoder_outputs = torch.stack(decoder_outputs, dim=1)
             decoder_output_states = torch.stack(decoder_output_states, dim=1)
             ret_dict[DecoderRNNFB.KEY_SEQUENCE] = sequence_symbols
             ret_dict[DecoderRNNFB.KEY_LENGTH] = lengths.tolist()
+            ret_dict[DecoderRNNFB.KEY_GENERATED_STRUCTURE_LABELS] = generated_structure_labels
 
         return decoder_outputs, decoder_output_states, ret_dict
+
+    #TODO Figure out how to make this work for a batch of abstracts.
+    def _get_new_structure_label(self, symbol_output, current_structure, batch_size, current_label):
+
+        if not self.use_labels:
+            return None
+
+        is_changed = False
+        if current_structure is None:
+            current_structure = torch.LongTensor([self.labels["introduction"]]).expand(batch_size, 1)
+            is_changed = True
+        else:
+            # This means that the sentence has ended and we have to resample
+            if symbol_output.item() == self.labels["full_stop"] or symbol_output.item() == self.labels["question_mark"]:
+                random_sample = random.random()
+                if current_label == self.labels["introduction"]:
+                    if random_sample >= 0.99:
+                        current_structure = torch.LongTensor([self.labels["conclusion"]]).expand(batch_size, 1)
+                        is_changed = True
+                    elif random_sample >= 0.51:
+                        current_structure = torch.LongTensor([self.labels["body"]]).expand(batch_size, 1)
+                        is_changed = True
+                else:
+                    if random_sample >= 0.745:
+                        current_structure = torch.LongTensor([self.labels["conclusion"]]).expand(batch_size, 1)
+                        is_changed = True
+
+
+        if is_changed:
+            #TODO: Won't work for a batch of sentences. Need to change this.
+            gen_label = current_structure[0].item()
+            if self.use_cuda: current_structure = current_structure.cuda()
+            _, structural_embedding = self.context_model(None, current_structure)
+        else:
+            structural_embedding = current_structure
+            gen_label = current_label
+        return structural_embedding, gen_label
 
     def _init_state(self, encoder_hidden):
         if encoder_hidden is None:
@@ -232,8 +255,7 @@ class DecoderRNNFB(BaseRNN):
             if teacher_forcing_ratio > 0:
                 raise ValueError("Teacher forcing has to be disabled (set 0) when no inputs is provided.")
             inputs = torch.LongTensor([self.sos_id] * batch_size).view(batch_size, 1)
-            if torch.cuda.is_available():
-                inputs = inputs.cuda()
+            if self.use_cuda: inputs = inputs.cuda()
             max_length = self.max_length
         else:
             max_length = inputs.size(1) - 1   

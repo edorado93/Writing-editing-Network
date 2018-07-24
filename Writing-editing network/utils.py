@@ -41,7 +41,6 @@ def plot_topical_encoding(topic_dictionary, topical_embeddings, tensorboardX_wri
 class Vectorizer:
     def __init__(self, max_words=None, min_frequency=None, start_end_tokens=True, maxlen=None):
         self.vocabulary = None
-        self.vocabulary_size = 0
         self.word2idx = dict()
         self.idx2word = dict()
         #most common words
@@ -49,20 +48,11 @@ class Vectorizer:
         #least common words
         self.min_frequency = min_frequency
         self.start_end_tokens = start_end_tokens
-        self.maxlen = maxlen
         self.context_vectorizer = {}
 
     def topics_to_index_tensor(self, topics):
         vec = [self.context_vectorizer[t] if t in self.context_vectorizer else self.context_vectorizer["algorithm"] for t in topics]
         return vec
-
-    def _find_max_sentence_length(self, corpus, template):
-        if not template:
-            self.maxlen = max(len(sent) for document in corpus for sent in document)
-        else:
-            self.maxlen = max(len(sent) for sent in corpus)
-        if self.start_end_tokens:
-            self.maxlen += 2
 
     def _build_vocabulary(self, corpus, template):
         if not template:
@@ -75,10 +65,12 @@ class Vectorizer:
         if self.min_frequency:
             vocabulary = {word: freq for word, freq in vocabulary.items()
                           if freq >= self.min_frequency}
-        self.vocabulary = vocabulary
-        self.vocabulary_size = len(vocabulary) + 2  # padding and unk tokens
-        if self.start_end_tokens:
-            self.vocabulary_size += 2
+        # If vocabulary has already been created, then extend it. Otherwise assign a new one.
+        if self.vocabulary:
+            for new_k, new_v in vocabulary.items():
+                self.vocabulary[new_k] = self.vocabulary.get(new_k, 0) + new_v
+        else:
+            self.vocabulary = vocabulary
 
     def _build_word_index(self):
         self.word2idx['<UNK>'] = 3
@@ -88,14 +80,12 @@ class Vectorizer:
             self.word2idx['<EOS>'] = 1
             self.word2idx['<SOS>'] = 2
 
-        offset = len(self.word2idx)
         for idx, word in enumerate(self.vocabulary):
-            self.word2idx[word] = idx + offset
+            if word not in self.word2idx:
+                self.word2idx[word] = len(self.word2idx)
         self.idx2word = {idx: word for word, idx in self.word2idx.items()}
 
     def fit(self, corpus, template = False):
-        if not self.maxlen:
-            self._find_max_sentence_length(corpus, template)
         self._build_vocabulary(corpus, template)
         self._build_word_index()
 
@@ -126,7 +116,7 @@ class Vectorizer:
         return vcorpus
 
 class headline2abstractdataset(Dataset):
-    def __init__(self, path, vectorizer, USE_CUDA=torch.cuda.is_available(), max_len=200, use_topics=False, use_structure_info=False):
+    def __init__(self, path, vectorizer, USE_CUDA=False, max_len=200, use_topics=False, use_structure_info=False):
         self.use_topics = use_topics
         self.use_structure_info = use_structure_info
         self.head_len = 0
@@ -203,8 +193,7 @@ class headline2abstractdataset(Dataset):
 
     #sentence to word id
     def _vectorize_corpus(self):
-        if not self.vectorizer.vocabulary:
-            self.vectorizer.fit(self.corpus)
+        self.vectorizer.fit(self.corpus)
         return self.vectorizer.transform(self.corpus)
 
     def _read_data(self, headlines, abstracts):
@@ -246,9 +235,9 @@ class headline2abstractdataset(Dataset):
     def __getitem__(self, index):
         len_s, len_t, source, target, topics, structure_abstracts = self.data[index]
         source = torch.LongTensor(source).cuda() if self.USE_CUDA else torch.LongTensor(source)
-        target = torch.LongTensor(target).cuda() if self.USE_CUDA else torch.LongTensor(source)
-        topics = (torch.LongTensor(topics).cuda() if self.USE_CUDA else torch.LongTensor(source)) if self.use_topics else None
-        structure_abstracts = (torch.LongTensor(structure_abstracts).cuda() if self.USE_CUDA else torch.LongTensor(source)) if self.use_structure_info else None
+        target = torch.LongTensor(target).cuda() if self.USE_CUDA else torch.LongTensor(target)
+        topics = (torch.LongTensor(topics).cuda() if self.USE_CUDA else torch.LongTensor(topics)) if self.use_topics else None
+        structure_abstracts = (torch.LongTensor(structure_abstracts).cuda() if self.USE_CUDA else torch.LongTensor(structure_abstracts)) if self.use_structure_info else None
 
         ret = [source, target, len_s]
         if self.use_topics:

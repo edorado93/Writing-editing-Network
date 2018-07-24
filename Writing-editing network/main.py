@@ -53,7 +53,7 @@ abstracts = headline2abstractdataset(data_path, vectorizer, args.cuda, max_len=1
 print("number of training examples: %d" % len(abstracts))
 
 context_encoder = None
-vocab_size = abstracts.vectorizer.vocabulary_size
+vocab_size = len(vectorizer.word2idx)
 embedding = nn.Embedding(vocab_size, config.emsize, padding_idx=0)
 
 if config.pretrained:
@@ -77,7 +77,7 @@ encoder = EncoderRNN(vocab_size, embedding, abstracts.abs_len, abstract_encoder_
                   n_layers=config.nlayers, bidirectional=config.bidirectional, rnn_cell=config.cell)
 decoder = DecoderRNNFB(vocab_size, embedding, abstracts.abs_len, abstract_encoder_rnn_dim, sos_id=2, eos_id=1,
                      n_layers=config.nlayers, rnn_cell=config.cell, bidirectional=config.bidirectional,
-                     input_dropout_p=config.dropout, dropout_p=config.dropout, labels=structure_labels)
+                     input_dropout_p=config.dropout, dropout_p=config.dropout, labels=structure_labels, use_labels=config.use_labels, context_model=context_encoder, use_cuda=args.cuda)
 model = FbSeq2seq(encoder_title, encoder, context_encoder, decoder)
 total_params = sum(x.size()[0] * x.size()[1] if len(x.size()) > 1 else x.size()[0] for x in model.parameters())
 print('Model total parameters:', total_params, flush=True)
@@ -295,7 +295,7 @@ if __name__ == "__main__":
     elif args.mode == 1:
         model.load_state_dict(torch.load(args.save))
         print("model restored")
-        predictor = Predictor(model, abstracts.vectorizer)
+        predictor = Predictor(model, abstracts.vectorizer, use_cuda=args.cuda)
         count = 1
         while True:
             seq_str = input("Type in a source sequence:\n")
@@ -319,10 +319,8 @@ if __name__ == "__main__":
         # predict file
         model.load_state_dict(torch.load(args.save))
         print("model restored")
-        predictor = Predictor(model, abstracts.vectorizer)
-        data_path = cwd + config.relative_dev_path
-        abstracts = headline2abstractdataset(data_path, abstracts.vectorizer, args.cuda, max_len=1000)
-        print("number of test examples: %d" % len(abstracts))
+        predictor = Predictor(model, abstracts.vectorizer, use_cuda=args.cuda)
+        print("number of test examples: %d" % len(validation_abstracts))
         f_out_name = cwd + config.relative_gen_path
         outputs = []
         title = []
@@ -330,7 +328,7 @@ if __name__ == "__main__":
             outputs.append([])
         i = 0
         print("Start generating:")
-        train_loader = DataLoader(abstracts, config.batch_size)
+        train_loader = DataLoader(validation_abstracts, config.batch_size)
         for batch_idx, (source, target, input_lengths) in enumerate(train_loader):
             output_seq = predictor.predict_batch(source, input_lengths.tolist(), num_exams)
             for seq in output_seq:
@@ -339,7 +337,7 @@ if __name__ == "__main__":
                     outputs[j].append(seq[j+1])
                 i += 1
                 if i % 100 == 0:
-                    print("Percentages:  %.4f" % (i/float(len(abstracts))))
+                    print("Percentages:  %.4f" % (i/float(len(validation_abstracts))))
 
         print("Start writing:")
         for i in range(num_exams):
@@ -348,21 +346,19 @@ if __name__ == "__main__":
             for j in range(len(title)):
                 f_out.write(title[j] + '\n' + outputs[i][j] + '\n\n')
                 if j % 100 == 0:
-                    print("Percentages:  %.4f" % (j/float(len(abstracts))))
+                    print("Percentages:  %.4f" % (j/float(len(validation_abstracts))))
             f_out.close()
         f_out.close()
     elif args.mode == 3:
         model.load_state_dict(torch.load(args.save))
         print("model restored")
-        dev_data_path = cwd + config.relative_dev_path
-        abstracts = headline2abstractdataset(dev_data_path, abstracts.vectorizer, args.cuda, max_len=1000)
-        test_loader = DataLoader(abstracts, config.batch_size)
+        test_loader = DataLoader(validation_abstracts, config.batch_size)
         eval_f = Evaluate()
         num_exams = 8
-        predictor = Predictor(model, abstracts.vectorizer)
+        predictor = Predictor(model, validation_abstracts.vectorizer, use_cuda=args.cuda)
         print("Start Evaluating")
-        print("Test Data: ", len(abstracts))
-        cand, ref = predictor.preeval_batch(test_loader, len(abstracts), num_exams)
+        print("Test Data: ", len(validation_abstracts))
+        cand, ref = predictor.preeval_batch(test_loader, len(validation_abstracts), num_exams)
         scores = []
         fields = ["Bleu_1", "Bleu_2", "Bleu_3", "Bleu_4", "METEOR", "ROUGE_L"]
         for i in range(6):

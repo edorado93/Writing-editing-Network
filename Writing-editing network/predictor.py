@@ -3,7 +3,7 @@ import numpy as np
 
 
 class Predictor(object):
-    def __init__(self, model, vectorizer):
+    def __init__(self, model, vectorizer, use_cuda=False):
         """
         Predictor class to evaluate for a given model.
         Args:
@@ -12,7 +12,8 @@ class Predictor(object):
             src_vocab (seq2seq.dataset.vocabulary.Vocabulary): source sequence vocabulary
             tgt_vocab (seq2seq.dataset.vocabulary.Vocabulary): target sequence vocabulary
         """
-        if torch.cuda.is_available():
+        self.use_cuda = use_cuda
+        if use_cuda:
             self.model = model.cuda()
         else:
             self.model = model.cpu()
@@ -31,7 +32,6 @@ class Predictor(object):
             by the pre-trained model
         """
 
-        is_cuda_available = torch.cuda.is_available()
         torch.set_grad_enabled(False)
         text = []
         for tok in src_seq:
@@ -42,7 +42,7 @@ class Predictor(object):
 
         if topics:
             topics = torch.LongTensor(topics).view(1,-1)
-            if is_cuda_available:
+            if self.use_cuda:
                 topics = topics.cuda()
         else:
             topics = None
@@ -52,24 +52,28 @@ class Predictor(object):
             self.model.decoder.max_length = max_length
 
         input_variable = torch.LongTensor(text).view(1, -1)
-        if is_cuda_available:
+        if self.use_cuda:
             input_variable = input_variable.cuda()
 
         input_lengths = torch.LongTensor([len(src_seq)])
 
         prev_generated_seq = None
+        structure_abstracts = None
         outputs = []
         for i in range(num_exams):
             _, _, other = \
-                self.model(input_variable, prev_generated_seq, input_lengths, topics=topics)
+                self.model(input_variable, prev_generated_seq, input_lengths, topics=topics, structure_abstracts=structure_abstracts)
             length = other['length'][0]
 
             tgt_id_seq = [other['sequence'][di][0].item() for di in range(length)]
+            structure_abstracts = [other['gen_labels'][di] for di in range(length)]
             tgt_seq = [self.vectorizer.idx2word[tok] for tok in tgt_id_seq]
             output = ' '.join([i for i in tgt_seq if i != '<PAD>' and i != '<EOS>' and i != '<SOS>'])
             outputs.append(output)
+            structure_abstracts = torch.LongTensor(structure_abstracts).view(1, -1)
             prev_generated_seq = torch.LongTensor(tgt_id_seq).view(1, -1)
-            if torch.cuda.is_available():
+            if self.use_cuda:
+                structure_abstracts = structure_abstracts.cuda()
                 prev_generated_seq = prev_generated_seq.cuda()
         return outputs
 
@@ -110,7 +114,7 @@ class Predictor(object):
                 mask_line.extend([1] * (max_len - lengths[i]))
             mask.append(mask_line)
         mask = torch.ByteTensor(mask)
-        if torch.cuda.is_available():
+        if self.use_cuda:
             mask = mask.cuda()
         return prev_generated_seq.data.masked_fill_(mask, 0)
 
@@ -167,7 +171,7 @@ class Predictor(object):
                 text.append(3)
 
         input_variable = torch.LongTensor(text).view(1, -1)
-        if torch.cuda.is_available():
+        if self.use_cuda:
             input_variable = input_variable.cuda()
 
         input_lengths = [len(title)]
@@ -180,7 +184,7 @@ class Predictor(object):
                 text.append(3)
 
         prev_generated_seq = torch.LongTensor(text).view(1, -1)
-        if torch.cuda.is_available():
+        if self.use_cuda:
             prev_generated_seq = prev_generated_seq.cuda()
 
         outputs = []
@@ -194,6 +198,6 @@ class Predictor(object):
             output = ' '.join([i for i in tgt_seq if i != '<PAD>' and i != '<EOS>' and i != '<SOS>'])
             outputs.append(output)
             prev_generated_seq = torch.LongTensor(tgt_id_seq).view(1, -1)
-            if torch.cuda.is_available():
+            if self.use_cuda:
                 prev_generated_seq = prev_generated_seq.cuda()
         return outputs
