@@ -145,7 +145,7 @@ class Discriminator(nn.Module):
     def forward(self, input, seq_length, batch_size):
         e_out, e_hid = self.encoder(input)
         dis_out = decoder_train(input, e_hid, self.decoder, seq_length, batch_size, self.use_cuda)
-        dis_out = torch.sum(dis_out) / batch_size
+        dis_out = torch.sum(dis_out, dim=1) / batch_size
         dis_sig = self.sigmoid(dis_out)
         return dis_out, dis_sig
 
