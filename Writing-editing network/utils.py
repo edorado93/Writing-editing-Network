@@ -65,12 +65,7 @@ class Vectorizer:
         if self.min_frequency:
             vocabulary = {word: freq for word, freq in vocabulary.items()
                           if freq >= self.min_frequency}
-        # If vocabulary has already been created, then extend it. Otherwise assign a new one.
-        if self.vocabulary:
-            for new_k, new_v in vocabulary.items():
-                self.vocabulary[new_k] = self.vocabulary.get(new_k, 0) + new_v
-        else:
-            self.vocabulary = vocabulary
+        self.vocabulary = vocabulary
 
     def _build_word_index(self):
         self.word2idx['<UNK>'] = 3
@@ -193,7 +188,8 @@ class headline2abstractdataset(Dataset):
 
     #sentence to word id
     def _vectorize_corpus(self):
-        self.vectorizer.fit(self.corpus)
+        if not self.vectorizer.vocabulary:
+            self.vectorizer.fit(self.corpus)
         return self.vectorizer.transform(self.corpus)
 
     def _read_data(self, headlines, abstracts):

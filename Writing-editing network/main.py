@@ -45,11 +45,12 @@ validation_eval = Evaluate()
 cwd = os.getcwd()
 vectorizer = Vectorizer(min_frequency=config.min_freq)
 
+data_path = cwd + config.relative_data_path
+abstracts = headline2abstractdataset(data_path, vectorizer, args.cuda, max_len=1000, use_topics=config.use_topics, use_structure_info=config.use_labels)
+
 validation_data_path = cwd + config.relative_dev_path
 validation_abstracts = headline2abstractdataset(validation_data_path, vectorizer, args.cuda, max_len=1000, use_topics=config.use_topics, use_structure_info=config.use_labels)
 
-data_path = cwd + config.relative_data_path
-abstracts = headline2abstractdataset(data_path, vectorizer, args.cuda, max_len=1000, use_topics=config.use_topics, use_structure_info=config.use_labels)
 print("number of training examples: %d" % len(abstracts))
 
 context_encoder = None
