@@ -33,6 +33,18 @@ class SmallDataset(CommonConfig):
     relative_test_path = '/data/small-json/test.dat'
     relative_gen_path = '/data/small-json/fake%d.dat'
 
+class ThreeMostRelevantDataset(CommonConfig):
+    relative_data_path = '/data/large-json-three-most-relevant/train.dat'
+    relative_dev_path = '/data/large-json-three-most-relevant/dev.dat'
+    relative_test_path = '/data/large-json-three-most-relevant/test.dat'
+    relative_gen_path = '/data/large-json-three-most-relevant/fake%d.dat'
+
+class TfIdfAdditionalTopicDataset(CommonConfig):
+    relative_data_path = '/data/large-json-additional-topics-tf-idf/train.dat'
+    relative_dev_path = '/data/large-json-additional-topics-tf-idf/dev.dat'
+    relative_test_path = '/data/large-json-additional-topics-tf-idf/test.dat'
+    relative_gen_path = '/data/large-json-additional-topics-tf-idf/fake%d.dat'
+
 class LargeDataset(CommonConfig):
     relative_data_path = '/data/temp/train.dat'
     relative_dev_path = '/data/temp/dev.dat'
@@ -107,6 +119,36 @@ class LargeConfig6(LargeDataset):
     use_topics = True
     experiment_name = "lg-with-topics-lr-0.0001-WE-300"
 
+class ThreeMostRelevant1(ThreeMostRelevantDataset):
+    use_topics = True
+    experiment_name = "lg-with-topics-lr-0.0001-three-most-relevant"
+
+class ThreeMostRelevant2(ThreeMostRelevantDataset):
+    pretrained = 'embeddings/complete-512.vec'
+    use_topics = True
+    experiment_name = "lg-with-topics-lr-0.0001-WE-512-three-most-relevant"
+
+class ThreeMostRelevant3(ThreeMostRelevantDataset):
+    emsize = 300
+    pretrained = 'embeddings/complete.vec'
+    use_topics = True
+    experiment_name = "lg-with-topics-lr-0.0001-WE-300-three-most-relevant"
+
+class TfIdfAdditional1(TfIdfAdditionalTopicDataset):
+    use_topics = True
+    experiment_name = "lg-with-topics-lr-0.0001-tf-idf"
+
+class TfIdfAdditional2(TfIdfAdditionalTopicDataset):
+    pretrained = 'embeddings/complete-512.vec'
+    use_topics = True
+    experiment_name = "lg-with-topics-lr-0.0001-WE-512-tf-idf"
+
+class TfIdfAdditional3(TfIdfAdditionalTopicDataset):
+    emsize = 300
+    pretrained = 'embeddings/complete.vec'
+    use_topics = True
+    experiment_name = "lg-with-topics-lr-0.0001-WE-300-tf-idf"
+
 class LabelConfig1(LargeDataset):
     use_labels = True
     experiment_name = "lg-with-labels-lr-0.0001"
@@ -162,7 +204,13 @@ configuration = {
                  "la3": LabelConfig1(),
                  "l_and_t1": LabelAndTopics1(),
                  "l_and_t2": LabelAndTopics2(),
-                 "l_and_t3": LabelAndTopics3()}
+                 "l_and_t3": LabelAndTopics3(),
+                 "three_1": ThreeMostRelevant1(),
+                 "three_2": ThreeMostRelevant2(),
+                 "three_3": ThreeMostRelevant3(),
+                 "tf_1": TfIdfAdditional1(),
+                 "tf_2": TfIdfAdditional2(),
+                 "tf_3": TfIdfAdditional3()}
 
 def get_conf(name):
     return configuration[name]
