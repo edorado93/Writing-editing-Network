@@ -147,7 +147,6 @@ def train_discriminator(input_variable, target_variable, is_eval=False):
     sequence_length = input_variable.shape[1]
     '''add other return values'''
     dis_out, dis_sig = discrim_model(input_variable, sequence_length, config.batch_size)
-    print("Discriminator's output dim is {}, target dim is {}".format(dis_sig.shape, target_variable.shape))
     loss = discrim_criterion(dis_sig, target_variable)
     """ Check if we need this if condition here, since we are freezing the weights anyhow """
     if not is_eval:
@@ -194,7 +193,6 @@ def train_generator(input_variable, input_lengths, target_variable, topics, mode
             gen_log = torch.stack(probabilities[i])
             discrim_input = torch.stack(drafts[i])
             sequence_length = discrim_input.shape[1]
-            print("Log probabilities size is {}, discriminator's input size is {}, sequence length is {}, batch size is {}".format(gen_log.shape, discrim_input.shape, sequence_length, config.batch_size))
             est_values = critic_model(discrim_input)
             dis_out, dis_sig = discrim_model(discrim_input, sequence_length, config.batch_size)
             #gen_log is the log probabilities of generator output
@@ -253,7 +251,7 @@ def train_batch(input_variables, input_lengths, target_variables, topics, teache
             discriminator_target_variables =discriminator_target_variables.cuda()
 
         """ Mix them with the true data and pass it to the discriminator """
-        output = train_discriminator(discriminator_input_variables, discriminator_target_variables)
+        output = train_discriminator(discriminator_input_variables, discriminator_target_variables, is_eval=False)
         return output
 
 
@@ -296,16 +294,15 @@ def train_epoches(dataset, model, n_epochs, teacher_forcing_ratio):
             # train model
 
             # Train the DISCRIMINATOR
-            train_batch(input_variables, input_lengths,
+            discrim_loss = train_batch(input_variables, input_lengths,
                         target_variables, topics, teacher_forcing_ratio, False)
-
-            print("Discriminator trained successfully")
-            exit(0)
 
             # Train the GENERATOR
             loss_list = train_batch(input_variables, input_lengths,
                         target_variables, topics, teacher_forcing_ratio, True)
 
+            print("Discrim loss is:", discrim_loss, "Gen loss is:", loss_list)
+            exit(0)
             # Record average loss
             num_examples = len(source)
             epoch_examples_total += num_examples
