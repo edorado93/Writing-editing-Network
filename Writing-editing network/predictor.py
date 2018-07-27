@@ -20,7 +20,7 @@ class Predictor(object):
         self.model.eval()
         self.vectorizer = vectorizer
 
-    def predict(self, src_seq, num_exams, topics=None, max_length=None):
+    def predict(self, src_seq, num_exams, topics=None, max_length=None, use_structure=False):
         """ Make prediction given `src_seq` as input.
 
         Args:
@@ -66,15 +66,13 @@ class Predictor(object):
             length = other['length'][0]
 
             tgt_id_seq = [other['sequence'][di][0].item() for di in range(length)]
-            structure_abstracts = [other['gen_labels'][di] for di in range(length)]
             tgt_seq = [self.vectorizer.idx2word[tok] for tok in tgt_id_seq]
             output = ' '.join([i for i in tgt_seq if i != '<PAD>' and i != '<EOS>' and i != '<SOS>'])
             outputs.append(output)
-            structure_abstracts = torch.LongTensor(structure_abstracts).view(1, -1)
-            prev_generated_seq = torch.LongTensor(tgt_id_seq).view(1, -1)
-            if self.use_cuda:
-                structure_abstracts = structure_abstracts.cuda()
-                prev_generated_seq = prev_generated_seq.cuda()
+            prev_generated_seq = torch.LongTensor(tgt_id_seq).view(1, -1).cuda() if self.use_cuda else torch.LongTensor(tgt_id_seq).view(1, -1)
+            if use_structure:
+                structure_abstracts = [other['gen_labels'][di] for di in range(length)]
+                structure_abstracts = torch.LongTensor(structure_abstracts).view(1, -1).cuda() if self.use_cuda else torch.LongTensor(structure_abstracts).view(1, -1)
         return outputs
 
     def predict_batch(self, source, input_lengths, num_exams):

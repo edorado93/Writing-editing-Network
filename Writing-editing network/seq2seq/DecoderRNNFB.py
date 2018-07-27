@@ -111,7 +111,7 @@ class DecoderRNNFB(BaseRNN):
 
         if use_teacher_forcing:
             decoder_input = inputs[:, :-1]
-            structural_embedding = structural_embedding[:, :-1]
+            structural_embedding = structural_embedding[:, :-1] if self.use_labels else None
             decoder_outputs, decoder_output_states, decoder_hidden, attn = \
                 self.forward_step(decoder_input, pg_encoder_states,
                                 decoder_hidden, encoder_outputs, topical_embedding, structural_embedding)
@@ -188,7 +188,7 @@ class DecoderRNNFB(BaseRNN):
     def _get_new_structure_label(self, symbol_output, current_structure, batch_size, current_label):
 
         if not self.use_labels:
-            return None
+            return None, None
 
         is_changed = False
         if current_structure is None:

@@ -207,7 +207,6 @@ def train_epoches(dataset, model, n_epochs, teacher_forcing_ratio):
     train_loader = DataLoader(dataset, config.batch_size)
     prev_epoch_loss_list = [0.] * config.num_exams
     patience = 0
-    best_model = None
     for epoch in range(1, n_epochs + 1):
         model.train(True)
         epoch_examples_total = 0
@@ -276,10 +275,9 @@ def train_epoches(dataset, model, n_epochs, teacher_forcing_ratio):
                 break
         else:
             print("Saved best model till now!")
-            best_model = copy.deepcopy(model)
+            torch.save(model.state_dict(), args.save)
             patience = 0
             prev_epoch_loss_list = eval_scores[0][:]
-    return best_model
 
 
 if __name__ == "__main__":
@@ -287,12 +285,10 @@ if __name__ == "__main__":
         # train
         try:
             print("start training...")
-            model = train_epoches(abstracts, model, config.epochs, teacher_forcing_ratio=1)
+            train_epoches(abstracts, model, config.epochs, teacher_forcing_ratio=1)
         except KeyboardInterrupt:
             print('-' * 89)
             print('Exiting from training early')
-        torch.save(model.state_dict(), args.save)
-        print("model saved")
     elif args.mode == 1:
         model.load_state_dict(torch.load(args.save))
         print("model restored")
@@ -309,7 +305,7 @@ if __name__ == "__main__":
             num_exams = int(input("Type the number of drafts:\n"))
             max_length = int(input("Type the number of words to be generated\n"))
             print("\nresult:")
-            outputs = predictor.predict(seq, num_exams, max_length=max_length, topics=topics)
+            outputs = predictor.predict(seq, num_exams, max_length=max_length, topics=topics, use_structure=config.use_labels)
             for i in range(num_exams):
                 print(i)
                 print(outputs[i])
@@ -382,5 +378,3 @@ if __name__ == "__main__":
         except KeyboardInterrupt:
             print('-' * 89)
             print('Exiting from training early')
-        torch.save(model.state_dict(), args.save)
-        print("model saved")
