@@ -132,10 +132,16 @@ class headline2abstractdataset(Dataset):
 
     def _initalcorpus(self):
         old = []
-        for i, j, st in zip(self.data, self.topics_corpus, self.abstract_structures):
-            source = i[0]
-            target = i[1]
-            vectorized_topics = j
+        for i, content in enumerate(self.data):
+            source = content[0]
+            target = content[1]
+            contextual_dictionary = {}
+
+            if self.use_topics:
+                contextual_dictionary["topics"] = self.topics_corpus[i]
+            if self.use_structure_info:
+                contextual_dictionary["structure"] = self.abstract_structures[i]
+
             if len(source) > self.head_len:
                 self.head_len = len(source)
             if len(target) <= self.max_len:
@@ -145,12 +151,17 @@ class headline2abstractdataset(Dataset):
                 target = target[:self.max_len-1]
                 target.append(1)#word2idx['<EOS>'] = 1
                 self.abs_len = len(target)
-            old.append((source[1:-1], target, vectorized_topics, st))
-        old.sort(key = lambda x: len(x[0]), reverse = True)
+
+            old.append((source[1:-1], target, contextual_dictionary))
+        old.sort(key=lambda x: len(x[0]), reverse = True)
         corpus = []
-        for source, target, vectorized_topics, structure_abstract in old:
-            vectorized_topics = self.pad_sentence_vector(vectorized_topics, self.max_context_length, pad_value=self.vectorizer.context_vectorizer['algorithm'])
-            team = [len(source), len(target), self.pad_sentence_vector(source, self.head_len), self.pad_sentence_vector(target, self.abs_len), vectorized_topics, self.pad_sentence_vector(structure_abstract, self.abs_len, pad_value=3)]
+        for source, target, contextual_dictionary in old:
+
+            if self.use_topics:
+                contextual_dictionary["topics"] = self.pad_sentence_vector(contextual_dictionary["topics"], self.max_context_length, pad_value=self.vectorizer.context_vectorizer['algorithm'])
+            if self.use_structure_info:
+                contextual_dictionary["structure"] = self.pad_sentence_vector(contextual_dictionary["structure"], self.abs_len, pad_value=3)
+            team = [len(source), len(target), self.pad_sentence_vector(source, self.head_len), self.pad_sentence_vector(target, self.abs_len), contextual_dictionary]
             corpus.append(team)
         self.data = corpus
 
@@ -229,16 +240,15 @@ class headline2abstractdataset(Dataset):
         return structure
 
     def __getitem__(self, index):
-        len_s, len_t, source, target, topics, structure_abstracts = self.data[index]
+        len_s, len_t, source, target, context_dictionary = self.data[index]
         source = torch.LongTensor(source).cuda() if self.USE_CUDA else torch.LongTensor(source)
         target = torch.LongTensor(target).cuda() if self.USE_CUDA else torch.LongTensor(target)
-        topics = (torch.LongTensor(topics).cuda() if self.USE_CUDA else torch.LongTensor(topics)) if self.use_topics else None
-        structure_abstracts = (torch.LongTensor(structure_abstracts).cuda() if self.USE_CUDA else torch.LongTensor(structure_abstracts)) if self.use_structure_info else None
-
         ret = [source, target, len_s]
         if self.use_topics:
+            topics = (torch.LongTensor(context_dictionary["topics"]).cuda() if self.USE_CUDA else torch.LongTensor(context_dictionary["topics"])) if self.use_topics else None
             ret.append(topics)
         if self.use_structure_info:
+            structure_abstracts = (torch.LongTensor(context_dictionary["structure"]).cuda() if self.USE_CUDA else torch.LongTensor(context_dictionary["structure"])) if self.use_structure_info else None
             ret.append(structure_abstracts)
         return ret
 
