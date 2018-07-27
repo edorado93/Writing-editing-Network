@@ -51,6 +51,12 @@ class LargeDataset(CommonConfig):
     relative_test_path = '/data/temp/test.dat'
     relative_gen_path = '/data/temp/fake%d.dat'
 
+class PubMedStateDiagramDataset(CommonConfig):
+    relative_data_path = '/data/structurally-labelled-data/pub-med-state-diagram/train.dat'
+    relative_dev_path = '/data/structurally-labelled-data/pub-med-state-diagram/dev.dat'
+    relative_test_path = '/data/structurally-labelled-data/pub-med-state-diagram/test.dat'
+    relative_gen_path = '/data/structurally-labelled-data/pub-med-state-diagram/fake%d.dat'
+
 class SmallTopicsConfig1(SmallDatasetWithTopics):
     experiment_name = "smt-lr-0.0001"
 
