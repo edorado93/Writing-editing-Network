@@ -161,10 +161,9 @@ class DecoderRNNFB(BaseRNN):
                 return symbols
 
             decoder_input = inputs[:, 0].unsqueeze(1)
-            structural_embedding =  None
             gen_label = None
             for di in range(max_length):
-                structural_embedding, gen_label = self._get_new_structure_label(decoder_input, structural_embedding, inputs.shape[0], gen_label)
+                structural_embedding, gen_label = self._get_new_structure_label(decoder_input, inputs.shape[0], gen_label)
                 generated_structure_labels.append(gen_label)
                 decoder_output, decoder_output_state, decoder_hidden, step_attn = \
                     self.forward_step(decoder_input, pg_encoder_states, decoder_hidden,
@@ -184,42 +183,46 @@ class DecoderRNNFB(BaseRNN):
 
         return decoder_outputs, decoder_output_states, ret_dict
 
-    #TODO Figure out how to make this work for a batch of abstracts.
-    def _get_new_structure_label(self, symbol_output, current_structure, batch_size, current_label):
+    def _get_new_structure_label(self, batched_symbol_outputs, batch_size, batched_labels):
 
         if not self.use_labels:
             return None, None
 
-        is_changed = False
-        if current_structure is None:
-            current_structure = torch.LongTensor([self.labels["introduction"]]).expand(batch_size, 1)
-            is_changed = True
+        if batched_labels is None:
+            batched_new_labels = torch.LongTensor([self.labels["introduction"]]).expand(batch_size, 1)
         else:
-            # This means that the sentence has ended and we have to resample
-            if symbol_output.item() == self.labels["full_stop"] or symbol_output.item() == self.labels["question_mark"]:
-                random_sample = random.random()
-                if current_label == self.labels["introduction"]:
-                    if random_sample >= 0.99:
-                        current_structure = torch.LongTensor([self.labels["conclusion"]]).expand(batch_size, 1)
-                        is_changed = True
-                    elif random_sample >= 0.51:
-                        current_structure = torch.LongTensor([self.labels["body"]]).expand(batch_size, 1)
-                        is_changed = True
-                else:
-                    if random_sample >= 0.745:
-                        current_structure = torch.LongTensor([self.labels["conclusion"]]).expand(batch_size, 1)
-                        is_changed = True
+            batched_new_labels = []
+            for i in range(batch_size):
+                symbol_output = batched_symbol_outputs[i]
+                current_label = batched_labels[i]
 
+                # This means that the sentence has ended and we have to resample
+                if symbol_output.item() == self.labels["full_stop"] or symbol_output.item() == self.labels["question_mark"]:
+                    random_sample = random.random()
+                    if current_label == self.labels["introduction"]:
+                        if random_sample >= 0.9817025739:
+                            current_label = self.labels["conclusion"]
+                        elif random_sample <= 0.4843879840176284:
+                            current_label = self.labels["introduction"]
+                        else:
+                            current_label = self.labels["body"]
+                    elif current_label == self.labels["body"]:
+                        if random_sample <= 0.7448890860332114:
+                            current_label = self.labels["body"]
+                        else:
+                            current_label = self.labels["conclusion"]
+                    else:
+                        current_label = self.labels["conclusion"]
 
-        if is_changed:
-            #TODO: Won't work for a batch of sentences. Need to change this.
-            gen_label = current_structure[0].item()
-            if self.use_cuda: current_structure = current_structure.cuda()
-            _, structural_embedding = self.context_model(None, current_structure)
-        else:
-            structural_embedding = current_structure
-            gen_label = current_label
-        return structural_embedding, gen_label
+                batched_new_labels.append(current_label)
+
+            batched_new_labels = torch.LongTensor(batched_new_labels).view(batch_size, 1)
+
+        if self.use_cuda:
+            batched_new_labels = batched_new_labels.cuda()
+
+        _, batched_new_structure_embeddings = self.context_model(None, batched_new_labels)
+        return batched_new_structure_embeddings, batched_new_labels
 
     def _init_state(self, encoder_hidden):
         if encoder_hidden is None:

@@ -176,7 +176,7 @@ def bleu_scoring(title_and_abstracts, drafts):
             scores[j].append(final_scores[fields[j]])
     return scores
 
-def evaluate(validation_dataset, model, teacher_forcing_ratio):
+def evaluate(validation_dataset, model):
     validation_loader = DataLoader(validation_dataset, config.batch_size)
     model.eval()
     epoch_loss_list = [0] * config.num_exams
@@ -189,9 +189,9 @@ def evaluate(validation_dataset, model, teacher_forcing_ratio):
         input_variables = data[0]
         target_variables = data[1]
         input_lengths = data[2]
-        # train model
+        # Run the model on the validation data set WITHOUT teacher forcing
         loss_list, batch_sentences, batch_drafts = train_batch(input_variables, input_lengths,
-                                target_variables, topics, structure_abstracts, model, teacher_forcing_ratio, is_eval=True)
+                                target_variables, topics, structure_abstracts, model, teacher_forcing_ratio=0, is_eval=True)
         num_examples = len(input_variables)
         title_and_abstracts.extend(batch_sentences)
         for i in range(config.num_exams):
@@ -246,7 +246,7 @@ def train_epoches(dataset, model, n_epochs, teacher_forcing_ratio):
                                            elapsed * 1000 / config.log_interval, cur_loss),
                     flush=True)
 
-        validation_loss, eval_scores = evaluate(validation_abstracts, model, teacher_forcing_ratio)
+        validation_loss, eval_scores = evaluate(validation_abstracts, model)
         if config.use_topics:
             plot_topical_encoding(vectorizer.context_vectorizer, model.context_encoder.embedding, writer, epoch)
         for i in range(config.num_exams):
