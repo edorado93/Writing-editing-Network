@@ -177,7 +177,7 @@ def bleu_scoring(title_and_abstracts, drafts):
     return scores
 
 def evaluate(validation_dataset, model):
-    validation_loader = DataLoader(validation_dataset, config.batch_size)
+    validation_loader = DataLoader(validation_dataset, config.validation_batch_size)
     model.eval()
     epoch_loss_list = [0] * config.num_exams
     title_and_abstracts = []

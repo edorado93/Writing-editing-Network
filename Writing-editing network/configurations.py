@@ -2,6 +2,7 @@ class CommonConfig(object):
     cell = "GRU"
     nlayers = 1
     batch_size = 20
+    validation_batch_size = 32
     dataparallel = False
     dropout = 0
     epochs = 20
