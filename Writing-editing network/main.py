@@ -14,6 +14,7 @@ from predictor import Predictor
 from tensorboardX import SummaryWriter
 import configurations
 from pprint import pprint
+import os.path
 sys.path.insert(0,'..')
 from eval import Evaluate
 
@@ -203,11 +204,15 @@ def evaluate(validation_dataset, model):
         epoch_loss_list[i] /= float(len(validation_loader.dataset))
     return epoch_loss_list, scores
 
-def train_epoches(dataset, model, n_epochs, teacher_forcing_ratio):
+def train_epoches(start_epoch, dataset, model, n_epochs, teacher_forcing_ratio):
     train_loader = DataLoader(dataset, config.batch_size)
     prev_epoch_loss_list = [0.] * config.num_exams
     patience = 0
-    for epoch in range(1, n_epochs + 1):
+    start = time.time()
+    for epoch in range(start_epoch, n_epochs + 1):
+        if time.time() - start >= 82400:
+            print("Exiting with code 99", flush=True)
+            exit(99)
         model.train(True)
         epoch_examples_total = 0
         total_examples = 0
@@ -274,18 +279,37 @@ def train_epoches(dataset, model, n_epochs, teacher_forcing_ratio):
                 print("Breaking off now. Performance has not improved on validation set since the last",config.patience,"epochs")
                 break
         else:
+            save_model(epoch)
             print("Saved best model till now!")
-            torch.save(model.state_dict(), args.save)
             patience = 0
             prev_epoch_loss_list = eval_scores[0][:]
 
+def save_model(epoch):
+    state = {'epoch': epoch + 1, 'state_dict': model.state_dict(),
+             'optimizer': optimizer.state_dict()}
+    torch.save(state, args.save)
+
+def load_checkpoint():
+    start_epoch = 0
+    if os.path.isfile(args.save):
+        print("=> loading checkpoint '{}'".format(args.save))
+        checkpoint = torch.load(args.save)
+        start_epoch = checkpoint['epoch']
+        model.load_state_dict(checkpoint['state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer'])
+        print("=> loaded checkpoint '{}' (epoch {})"
+              .format(args.save, checkpoint['epoch']))
+    else:
+        print("=> no checkpoint found at '{}', starting from scratch".format(args.save))
+
+    return start_epoch
 
 if __name__ == "__main__":
     if args.mode == 0:
         # train
         try:
-            print("start training...")
-            train_epoches(abstracts, model, config.epochs, teacher_forcing_ratio=1)
+            start_epoch = load_checkpoint()
+            train_epoches(start_epoch, abstracts, model, config.epochs, teacher_forcing_ratio=1)
         except KeyboardInterrupt:
             print('-' * 89)
             print('Exiting from training early')
@@ -367,14 +391,3 @@ if __name__ == "__main__":
                 scores[j].append(final_scores[fields[j]])
         with open('figure.pkl', 'wb') as f:
             pickle.dump((fields, scores), f)
-    elif args.mode == 4:
-        # predict sentence
-        model.load_state_dict(torch.load(args.save))
-        print("model restored")
-        # train
-        try:
-            print("Resume training...")
-            model = train_epoches(abstracts, model, config.epochs, teacher_forcing_ratio=1)
-        except KeyboardInterrupt:
-            print('-' * 89)
-            print('Exiting from training early')

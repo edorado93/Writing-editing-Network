@@ -47,10 +47,10 @@ class TfIdfAdditionalTopicDataset(CommonConfig):
     relative_gen_path = '/data/large-json-additional-topics-tf-idf/fake%d.dat'
 
 class LargeDataset(CommonConfig):
-    relative_data_path = '/data/temp/train.dat'
-    relative_dev_path = '/data/temp/dev.dat'
-    relative_test_path = '/data/temp/test.dat'
-    relative_gen_path = '/data/temp/fake%d.dat'
+    relative_data_path = '/data/large-json/train.dat'
+    relative_dev_path = '/data/large-json/dev.dat'
+    relative_test_path = '/data/large-json/test.dat'
+    relative_gen_path = '/data/large-json/fake%d.dat'
 
 class PubMedStateDiagramDataset(CommonConfig):
     relative_data_path = '/data/structurally-labelled-data/pub-med-state-diagram/train.dat'
@@ -173,11 +173,11 @@ class LabelConfig3(LargeDataset):
 
 class LabelAndTopics1(LabelConfig1):
     use_topics = True
-    experiment_name = "lg-with-labels-and-topics-lr-0.0001-WE-300"
+    experiment_name = "lg-with-labels-and-topics-lr-0.0001"
 
 class LabelAndTopics2(LabelConfig2):
     use_topics = True
-    experiment_name = "lg-with-labels-and-topics-lr-0.0001-WE-300"
+    experiment_name = "lg-with-labels-and-topics-lr-0.0001-WE-512"
 
 class LabelAndTopics3(LabelConfig3):
     use_topics = True
@@ -220,4 +220,5 @@ configuration = {
                  "tf_3": TfIdfAdditional3()}
 
 def get_conf(name):
+    print("Config name is {}", name)
     return configuration[name]
