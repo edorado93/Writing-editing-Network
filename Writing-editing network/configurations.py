@@ -156,16 +156,16 @@ class TfIdfAdditional3(TfIdfAdditionalTopicDataset):
     use_topics = True
     experiment_name = "lg-with-topics-lr-0.0001-WE-300-tf-idf"
 
-class LabelConfig1(LargeDataset):
+class LabelConfig1(PubMedStateDiagramDataset):
     use_labels = True
     experiment_name = "lg-with-labels-lr-0.0001"
 
-class LabelConfig2(LargeDataset):
+class LabelConfig2(PubMedStateDiagramDataset):
     pretrained = 'embeddings/complete-512.vec'
     use_labels = True
     experiment_name = "lg-with-labels-lr-0.0001-WE-512"
 
-class LabelConfig3(LargeDataset):
+class LabelConfig3(PubMedStateDiagramDataset):
     emsize = 300
     pretrained = 'embeddings/complete.vec'
     use_labels = True
@@ -207,8 +207,8 @@ configuration = {
                  "l5": LargeConfig5(),
                  "l6": LargeConfig6(),
                  "la1": LabelConfig1(),
-                 "la2": LabelConfig1(),
-                 "la3": LabelConfig1(),
+                 "la2": LabelConfig2(),
+                 "la3": LabelConfig3(),
                  "l_and_t1": LabelAndTopics1(),
                  "l_and_t2": LabelAndTopics2(),
                  "l_and_t3": LabelAndTopics3(),
