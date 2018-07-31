@@ -220,5 +220,5 @@ configuration = {
                  "tf_3": TfIdfAdditional3()}
 
 def get_conf(name):
-    print("Config name is {}", name)
+    print("Config name is {}".format(name))
     return configuration[name]
