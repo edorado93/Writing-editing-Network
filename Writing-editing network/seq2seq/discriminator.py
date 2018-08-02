@@ -86,6 +86,28 @@ class Critic(nn.Module):
         out_space1 = out_space.squeeze(2)
         return out_space1
 
+def criticLoss(dis_pred, est_val, seq_length, config, use_cuda=False):
+    gamma = 0.8835659
+    m = nn.Sigmoid()
+    rewards = torch.log(m(dis_pred))
+    cumulative_rewards = []
+
+    rewards = torch.unbind(rewards, dim=1)
+    for t in range(seq_length):
+        cum_value = torch.zeros(config.batch_size)
+        if use_cuda:
+            cum_value = cum_value.cuda()
+        for s in range(t, seq_length):
+            discount = (gamma ** (s - t))
+            cum_value += discount * rewards[s]
+        cumulative_rewards.append(cum_value)
+    cumulative_rewards = torch.stack(cumulative_rewards, dim=1)
+
+    loss = nn.MSELoss()
+    cumulative_rewards = cumulative_rewards.detach()
+    critic_loss = loss(est_val, cumulative_rewards)
+    return critic_loss
+
 def reinforce(gen_log_prob, dis_pred, est_val, seq_length, config, use_cuda=False):
     gamma = 0.8835659
     m = nn.Sigmoid()
@@ -145,7 +167,7 @@ class Discriminator(nn.Module):
     def forward(self, input, seq_length, batch_size):
         e_out, e_hid = self.encoder(input)
         dis_out = decoder_train(input, e_hid, self.decoder, seq_length, batch_size, self.use_cuda)
-        dis_out = torch.sum(dis_out, dim=1) / batch_size
-        dis_sig = self.sigmoid(dis_out)
+        dis_out2 = torch.sum(dis_out, dim=1) / batch_size
+        dis_sig = self.sigmoid(dis_out2)
         return dis_out, dis_sig
 

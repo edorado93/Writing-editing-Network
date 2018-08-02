@@ -10,7 +10,7 @@ from seq2seq.fb_seq2seq import FbSeq2seq
 from seq2seq.EncoderRNN import EncoderRNN
 from seq2seq.DecoderRNNFB import DecoderRNNFB
 from seq2seq.ContextEncoder import ContextEncoder
-from seq2seq.discriminator import reinforce, Encoder, DecoderRNN, Discriminator, Critic
+from seq2seq.discriminator import reinforce, criticLoss, Encoder, DecoderRNN, Discriminator, Critic
 from predictor import Predictor
 from tensorboardX import SummaryWriter
 import configurations
@@ -101,8 +101,8 @@ if args.cuda:
     critic_model = critic_model.cuda()
     discrim_criterion = discrim_criterion.cuda()
     criterion = criterion.cuda()
-optimizer = optim.Adam(list(model.parameters()) + list(discrim_model.parameters()), lr=config.lr)
-
+optimizer = optim.Adam(list(model.parameters()) + list(discrim_model.parameters()) + list(critic_model.parameters()), lr=config.lr)
+i
 # Mask variable
 def _mask(prev_generated_seq):
     prev_mask = torch.eq(prev_generated_seq, 1)
@@ -142,19 +142,40 @@ def unfreeze_discriminator():
     for param in discrim_model.parameters():
         param.requires_grad = True
 
+def freeze_critic():
+    for param in critic_model.parameters():
+        param.requires_grad = False
+
+def unfreeze_critic():
+    for param in critic_model.parameters():
+        param.requires_grad = True
+
 
 def train_discriminator(input_variable, target_variable, is_eval=False):
     sequence_length = input_variable.shape[1]
     '''add other return values'''
     dis_out, dis_sig = discrim_model(input_variable, sequence_length, config.batch_size)
     loss = discrim_criterion(dis_sig, target_variable)
+
+    est_values = critic_model(input_variable)
+    critic_loss = criticLoss(dis_out, est_values, sequence_length, config, args.cuda)
+
     """ Check if we need this if condition here, since we are freezing the weights anyhow """
     if not is_eval:
+
+        unfreeze_discriminator()
+        freeze_critic()
+
         discrim_model.zero_grad()
         loss.backward(retain_graph=True)
         optimizer.step()
-    '''Need to add code to train the critic when we train the discriminator'''
-    return loss
+
+        freeze_discriminator()
+        unfreeze_critic()
+        critic_model.zero_grad()
+        critic_loss.backward(retain_graph=True)
+        optimizer.step()
+    return loss, critic_loss
 
 def train_generator(input_variable, input_lengths, target_variable, topics, model,
                 teacher_forcing_ratio, is_eval=False):
@@ -251,8 +272,8 @@ def train_batch(input_variables, input_lengths, target_variables, topics, teache
             discriminator_target_variables =discriminator_target_variables.cuda()
 
         """ Mix them with the true data and pass it to the discriminator """
-        output = train_discriminator(discriminator_input_variables, discriminator_target_variables, is_eval=False)
-        return output
+        output1, output2 = train_discriminator(discriminator_input_variables, discriminator_target_variables, is_eval=False)
+        return output1, output2
 
 
 def evaluate(validation_dataset, model, teacher_forcing_ratio):
@@ -294,14 +315,14 @@ def train_epoches(dataset, model, n_epochs, teacher_forcing_ratio):
             # train model
 
             # Train the DISCRIMINATOR
-            discrim_loss = train_batch(input_variables, input_lengths,
+            discrim_loss, critic_loss = train_batch(input_variables, input_lengths,
                         target_variables, topics, teacher_forcing_ratio, False)
 
             # Train the GENERATOR
             loss_list = train_batch(input_variables, input_lengths,
                         target_variables, topics, teacher_forcing_ratio, True)
 
-            print("Discrim loss is:", discrim_loss, "Gen loss is:", loss_list)
+            print("Discrim loss is:", discrim_loss, "Critic Loss is: ", critic_loss, "Gen loss is:", loss_list)
             exit(0)
             # Record average loss
             num_examples = len(source)
