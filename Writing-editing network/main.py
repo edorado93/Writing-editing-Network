@@ -372,19 +372,20 @@ if __name__ == "__main__":
         load_checkpoint()
         test_loader = DataLoader(validation_abstracts, config.batch_size)
         eval_f = Evaluate()
-        num_exams = 8
+        num_exams = 3
         predictor = Predictor(model, validation_abstracts.vectorizer, use_cuda=args.cuda)
         print("Start Evaluating")
         print("Test Data: ", len(validation_abstracts))
-        cand, ref = predictor.preeval_batch(test_loader, len(validation_abstracts), num_exams)
+        cand, ref = predictor.preeval_batch(test_loader, len(validation_abstracts), num_exams, use_topics=config.use_topics, use_labels=config.use_labels)
         scores = []
-        fields = ["Bleu_1", "Bleu_2", "Bleu_3", "Bleu_4", "METEOR", "ROUGE_L"]
-        for i in range(6):
+        fields = ["Bleu_4", "METEOR", "ROUGE_L"]
+        for i in range(3):
             scores.append([])
         for i in range(num_exams):
             print("No.", i)
             final_scores = eval_f.evaluate(live=True, cand=cand[i], ref=ref)
-            for j in range(6):
+            for j in range(3):
                 scores[j].append(final_scores[fields[j]])
+        pprint(scores)
         with open('figure.pkl', 'wb') as f:
             pickle.dump((fields, scores), f)

@@ -116,23 +116,31 @@ class Predictor(object):
             mask = mask.cuda()
         return prev_generated_seq.data.masked_fill_(mask, 0)
 
-    def preeval_batch(self, test_loader, abs_len, num_exams):
+    def preeval_batch(self, test_loader, abs_len, num_exams, use_topics=False, use_labels=False):
         torch.set_grad_enabled(False)
         refs = {}
         cands = []
         for i in range(num_exams):
             cands.append({})
         i = 0
-        for batch_idx, (source, target, input_lengths, topics) in enumerate(test_loader):
-            for j in range(source.size(0)):
+        for batch_idx, data in enumerate(test_loader):
+            topics = data[3] if use_topics else None
+            # Since this is test time, we won't feed any structure labels from the test set.
+            # The model has to figure them out for all the abstracts.
+            structure_abstracts = None
+
+            input_variables = data[0]
+            target_variables = data[1]
+            input_lengths = data[2]
+
+            for j in range(input_variables.size(0)):
                 i += 1
-                ref = self.prepare_for_bleu(target[j])
+                ref = self.prepare_for_bleu(target_variables[j])
                 refs[i] = [ref]
-            input_variables = source
             prev_generated_seq = None
             for k in range(num_exams):
                 _, _, other = \
-                    self.model(input_variables, prev_generated_seq, input_lengths, topics=topics)
+                    self.model(input_variables, prev_generated_seq, input_lengths, topics=topics, structure_abstracts=structure_abstracts)
                 length = other['length']
                 sequence = torch.stack(other['sequence'], 1).squeeze(2)
                 prev_generated_seq = self._mask(sequence)
@@ -140,6 +148,8 @@ class Predictor(object):
                     out_seq = [other['sequence'][di][j] for di in range(length[j])]
                     out = self.prepare_for_bleu(out_seq)
                     cands[k][i] = out
+                if use_labels:
+                    structure_abstracts = torch.stack(other['gen_labels'], 1).squeeze(2)
             if i % 100 == 0:
                 print("Percentages:  %.4f" % (i/float(abs_len)))
         return cands, refs
