@@ -22,82 +22,30 @@ class CommonConfig(object):
     use_topics = False
     use_labels = False
 
-class SmallDatasetWithTopics(CommonConfig):
-    relative_data_path = '/data/small-json-topics/train.dat'
-    relative_dev_path = '/data/small-json-topics/dev.dat'
-    relative_test_path = '/data/small-json-topics/test.dat'
-    relative_gen_path = '/data/small-json-topics/fake%d.dat'
-
-class SmallDataset(CommonConfig):
-    relative_data_path = '/data/small-json/train.dat'
-    relative_dev_path = '/data/small-json/dev.dat'
-    relative_test_path = '/data/small-json/test.dat'
-    relative_gen_path = '/data/small-json/fake%d.dat'
-
 class ThreeMostRelevantDataset(CommonConfig):
     relative_data_path = '/data/large-json-three-most-relevant/train.dat'
     relative_dev_path = '/data/large-json-three-most-relevant/dev.dat'
     relative_test_path = '/data/large-json-three-most-relevant/test.dat'
-    relative_gen_path = '/data/large-json-three-most-relevant/fake%d.dat'
 
 class TfIdfAdditionalTopicDataset(CommonConfig):
     relative_data_path = '/data/large-json-additional-topics-tf-idf/train.dat'
     relative_dev_path = '/data/large-json-additional-topics-tf-idf/dev.dat'
     relative_test_path = '/data/large-json-additional-topics-tf-idf/test.dat'
-    relative_gen_path = '/data/large-json-additional-topics-tf-idf/fake%d.dat'
 
 class LargeDataset(CommonConfig):
     relative_data_path = '/data/large-json/train.dat'
     relative_dev_path = '/data/large-json/dev.dat'
     relative_test_path = '/data/large-json/test.dat'
-    relative_gen_path = '/data/large-json/fake%d.dat'
 
 class PubMedStateDiagramDataset(CommonConfig):
     relative_data_path = '/data/structurally-labelled-data/pub-med-state-diagram/train.dat'
     relative_dev_path = '/data/structurally-labelled-data/pub-med-state-diagram/dev.dat'
     relative_test_path = '/data/structurally-labelled-data/pub-med-state-diagram/test.dat'
-    relative_gen_path = '/data/structurally-labelled-data/pub-med-state-diagram/fake%d.dat'
 
-class SmallTopicsConfig1(SmallDatasetWithTopics):
-    experiment_name = "smt-lr-0.0001"
-
-class SmallTopicsConfig2(SmallDatasetWithTopics):
-    pretrained = 'embeddings/complete-512.vec'
-    experiment_name = "smt-lr-0.0001-WE-512"
-
-class SmallTopicsConfig3(SmallDatasetWithTopics):
-    emsize = 300
-    pretrained = 'embeddings/complete.vec'
-    experiment_name = "smt-lr-0.0001-WE-300"
-
-class SmallTopicsConfig4(SmallDatasetWithTopics):
-    use_topics = True
-    experiment_name = "smt-with-topics-lr-0.0001"
-
-class SmallTopicsConfig5(SmallDatasetWithTopics):
-    pretrained = 'embeddings/complete-512.vec'
-    use_topics = True
-    experiment_name = "smt-with-topics-lr-0.0001-WE-512"
-
-class SmallTopicsConfig6(SmallDatasetWithTopics):
-    emsize = 300
-    pretrained = 'embeddings/complete.vec'
-    use_topics = True
-    experiment_name = "smt-with-topics-lr-0.0001-WE-300"
-
-
-class SmallConfig1(SmallDataset):
-    experiment_name = "sm-lr-0.0001"
-
-class SmallConfig2(SmallDataset):
-    pretrained = 'embeddings/complete-512.vec'
-    experiment_name = "sm-lr-0.0001-WE-512"
-
-class SmallConfig3(SmallDataset):
-    emsize = 300
-    pretrained = 'embeddings/complete.vec'
-    experiment_name = "sm-lr-0.0001-WE-300"
-
+class PubMedAndTfIdfDataset(CommonConfig):
+    relative_data_path = '/data/structurally-labelled-data/tf-idf/train.dat'
+    relative_dev_path = '/data/structurally-labelled-data/tf-idf/dev.dat'
+    relative_test_path = '/data/structurally-labelled-data/tf-idf/test.dat'
 
 class LargeConfig1(LargeDataset):
     experiment_name = "lg-lr-0.0001"
@@ -171,18 +119,41 @@ class LabelConfig3(PubMedStateDiagramDataset):
     use_labels = True
     experiment_name = "lg-with-labels-lr-0.0001-WE-300"
 
-class LabelAndTopics1(LabelConfig1):
+class LabelAndTopics1(PubMedStateDiagramDataset):
     use_topics = True
+    use_labels = True
     experiment_name = "lg-with-labels-and-topics-lr-0.0001"
 
-class LabelAndTopics2(LabelConfig2):
+class LabelAndTopics2(PubMedStateDiagramDataset):
     use_topics = True
+    pretrained = 'embeddings/complete-512.vec'
+    use_labels = True
     experiment_name = "lg-with-labels-and-topics-lr-0.0001-WE-512"
 
-class LabelAndTopics3(LabelConfig3):
+class LabelAndTopics3(PubMedStateDiagramDataset):
     use_topics = True
+    emsize = 300
+    pretrained = 'embeddings/complete.vec'
+    use_labels = True
     experiment_name = "lg-with-labels-and-topics-lr-0.0001-WE-300"
 
+class LabelsAndTf1(PubMedAndTfIdfDataset):
+    use_topics = True
+    use_labels = True
+    experiment_name = "lg-with-labels-and-tf-idf-lr-0.0001"
+
+class LabelsAndTf2(PubMedAndTfIdfDataset):
+    use_topics = True
+    pretrained = 'embeddings/complete-512.vec'
+    use_labels = True
+    experiment_name = "lg-with-labels-and-tf-idf-lr-0.0001-WE-512"
+
+class LabelsAndTf3(PubMedAndTfIdfDataset):
+    use_topics = True
+    emsize = 300
+    pretrained = 'embeddings/complete.vec'
+    use_labels = True
+    experiment_name = "lg-with-labels-and-tf-idf-lr-0.0001-WE-300"
 
 def print_config(config):
     print("[batch_size = {}, dataparallel = {}, epochs = {}, log_interval = {}, patience = {}, relative_data_path = {}, relative_dev_path = {}, emsize = {},context_dim = {}, learning rate = {}, pretrained = {}, use_topics = {}, use_structure_labels = {}, experiment_name = {}]".format(config.batch_size
@@ -191,15 +162,6 @@ def print_config(config):
           config.lr, config.pretrained, config.use_topics, config.use_labels, config.experiment_name), flush=True)
 
 configuration = {
-                 "st1": SmallTopicsConfig1(),
-                 "st2": SmallTopicsConfig2(),
-                 "st3": SmallTopicsConfig3(),
-                 "st4": SmallTopicsConfig4(),
-                 "st5": SmallTopicsConfig5(),
-                 "st6": SmallTopicsConfig6(),
-                 "s1": SmallConfig1(),
-                 "s2": SmallConfig2(),
-                 "s3": SmallConfig3(),
                  "l1": LargeConfig1(),
                  "l2": LargeConfig2(),
                  "l3": LargeConfig3(),
@@ -217,7 +179,10 @@ configuration = {
                  "three_3": ThreeMostRelevant3(),
                  "tf_1": TfIdfAdditional1(),
                  "tf_2": TfIdfAdditional2(),
-                 "tf_3": TfIdfAdditional3()}
+                 "tf_3": TfIdfAdditional3(),
+                 "l_and_tf1": LabelsAndTf1(),
+                 "l_and_tf2": LabelsAndTf2(),
+                 "l_and_tf3": LabelsAndTf3()}
 
 def get_conf(name):
     print("Config name is {}".format(name))
