@@ -8,6 +8,7 @@ import torch.nn.functional as F
 
 from .attention import Attention
 from .baseRNN import BaseRNN
+import random
 
 
 class Gate(nn.Module):
@@ -36,10 +37,11 @@ class DecoderRNNFB(BaseRNN):
     KEY_ATTN_SCORE = 'attention_score'
     KEY_LENGTH = 'length'
     KEY_SEQUENCE = 'sequence'
+    KEY_GENERATED_STRUCTURE_LABELS = 'gen_labels'
 
     def __init__(self, vocab_size, embedding, max_len, embed_size,
                  sos_id, eos_id, n_layers=1, rnn_cell='gru', bidirectional=False,
-                 input_dropout_p=0, dropout_p=0):
+                 input_dropout_p=0, dropout_p=0, labels=None, context_model=None, use_labels=False, use_cuda=False):
         hidden_size = embed_size
         if bidirectional:
             hidden_size *= 2
@@ -48,6 +50,7 @@ class DecoderRNNFB(BaseRNN):
                 input_dropout_p, dropout_p,
                 n_layers, rnn_cell)
 
+        self.labels = labels
         self.bidirectional_encoder = bidirectional
         self.rnn = self.rnn_cell(embed_size, hidden_size, n_layers, batch_first=True, dropout=dropout_p)
         self.output_size = vocab_size
@@ -63,13 +66,21 @@ class DecoderRNNFB(BaseRNN):
         self.out1 = nn.Linear(self.hidden_size, self.output_size)
         self.out2 = nn.Linear(self.hidden_size, self.output_size)
 
-    def forward_step(self, input_var, pg_encoder_states, hidden, encoder_outputs, context_embedding):
+        # Structural embedding variables requirement during test time
+        self.context_model = context_model
+        self.use_labels = use_labels
+        self.use_cuda = use_cuda
+
+
+    def forward_step(self, input_var, pg_encoder_states, hidden, encoder_outputs, topical_embedding=None, structural_embedding=None):
         batch_size = input_var.size(0)
         output_size = input_var.size(1)
 
         embedded = self.embedding(input_var)
-        if context_embedding is not None:
-            embedded = torch.cat([context_embedding.expand(-1, embedded.shape[1], -1), embedded], dim=2)
+        if topical_embedding is not None:
+            embedded = torch.cat([topical_embedding.expand(-1, embedded.shape[1], -1), embedded], dim=2)
+        if structural_embedding is not None:
+            embedded = torch.cat((embedded, structural_embedding), dim=2)
         embedded = self.input_dropout(embedded)
 
         attn = None
@@ -86,7 +97,7 @@ class DecoderRNNFB(BaseRNN):
         return outputs, output_states_attn, hidden, attn
 
     def forward(self, inputs=None, encoder_hidden=None, encoder_outputs=None,
-                pg_encoder_states=None, function=F.log_softmax, teacher_forcing_ratio=0, context_embedding=None):
+                pg_encoder_states=None, function=F.log_softmax, teacher_forcing_ratio=0, topical_embedding=None, structural_embedding=None):
         ret_dict = dict()
         ret_dict[DecoderRNNFB.KEY_ATTN_SCORE] = list()
 
@@ -100,13 +111,15 @@ class DecoderRNNFB(BaseRNN):
 
         if use_teacher_forcing:
             decoder_input = inputs[:, :-1]
+            structural_embedding = structural_embedding[:, :-1] if self.use_labels else None
             decoder_outputs, decoder_output_states, decoder_hidden, attn = \
                 self.forward_step(decoder_input, pg_encoder_states,
-                                decoder_hidden, encoder_outputs, context_embedding)
+                                decoder_hidden, encoder_outputs, topical_embedding, structural_embedding)
         else:
             decoder_outputs = []
             decoder_output_states = []
             sequence_symbols = []
+            generated_structure_labels = []
             lengths = np.array([max_length] * batch_size)
 
             # 30 percent of the times select a random word, otherwise
@@ -117,7 +130,7 @@ class DecoderRNNFB(BaseRNN):
                 if random.random() < 0.3:
                     word_weights = step_output.squeeze().data.div(1.).exp().cpu()
                     word_idx = torch.multinomial(word_weights, 1)
-                    return word_idx.view(step_output.shape[0], 1).cuda() if step_output.is_cuda else word_idx.view(step_output.shape[0], 1)
+                    return word_idx.view(step_output.shape[0], 1).cuda() if self.use_cuda else word_idx.view(step_output.shape[0], 1)
                 symbols = step_output.topk(10)[1]
                 for i, s in enumerate(symbols):
                     previous_window = [t[i] for t in sequence_symbols[-5:]]
@@ -131,7 +144,7 @@ class DecoderRNNFB(BaseRNN):
                         output.append(s[0])
 
                 output = torch.stack(output).unsqueeze(1)
-                return output.cuda() if step_output.is_cuda else output
+                return output.cuda() if self.use_cuda else output
 
             def decode(step, step_output, step_output_state=None, step_attn=None):
                 if step_output_state is not None:
@@ -148,11 +161,13 @@ class DecoderRNNFB(BaseRNN):
                 return symbols
 
             decoder_input = inputs[:, 0].unsqueeze(1)
+            gen_label = None
             for di in range(max_length):
-
+                structural_embedding, gen_label = self._get_new_structure_label(decoder_input, inputs.shape[0], gen_label)
+                generated_structure_labels.append(gen_label)
                 decoder_output, decoder_output_state, decoder_hidden, step_attn = \
                     self.forward_step(decoder_input, pg_encoder_states, decoder_hidden,
-                                      encoder_outputs, context_embedding)
+                                      encoder_outputs, topical_embedding, structural_embedding)
                 # # not allow decoder to output UNK
                 decoder_output[:, :, 3] = -float('inf')
 
@@ -160,13 +175,54 @@ class DecoderRNNFB(BaseRNN):
                 step_output_state = decoder_output_state.squeeze(1)
                 symbols = decode(di, step_output, step_output_state, step_attn)
                 decoder_input = symbols
-
             decoder_outputs = torch.stack(decoder_outputs, dim=1)
             decoder_output_states = torch.stack(decoder_output_states, dim=1)
             ret_dict[DecoderRNNFB.KEY_SEQUENCE] = sequence_symbols
             ret_dict[DecoderRNNFB.KEY_LENGTH] = lengths.tolist()
+            ret_dict[DecoderRNNFB.KEY_GENERATED_STRUCTURE_LABELS] = generated_structure_labels
 
         return decoder_outputs, decoder_output_states, ret_dict
+
+    def _get_new_structure_label(self, batched_symbol_outputs, batch_size, batched_labels):
+
+        if not self.use_labels:
+            return None, None
+
+        if batched_labels is None:
+            batched_new_labels = torch.LongTensor([self.labels["introduction"]]).expand(batch_size, 1)
+        else:
+            batched_new_labels = []
+            for i in range(batch_size):
+                symbol_output = batched_symbol_outputs[i]
+                current_label = batched_labels[i]
+
+                # This means that the sentence has ended and we have to resample
+                if symbol_output.item() == self.labels["full_stop"] or symbol_output.item() == self.labels["question_mark"]:
+                    random_sample = random.random()
+                    if current_label == self.labels["introduction"]:
+                        if random_sample >= 0.9817025739:
+                            current_label = self.labels["conclusion"]
+                        elif random_sample <= 0.4843879840176284:
+                            current_label = self.labels["introduction"]
+                        else:
+                            current_label = self.labels["body"]
+                    elif current_label == self.labels["body"]:
+                        if random_sample <= 0.7448890860332114:
+                            current_label = self.labels["body"]
+                        else:
+                            current_label = self.labels["conclusion"]
+                    else:
+                        current_label = self.labels["conclusion"]
+
+                batched_new_labels.append(current_label)
+
+            batched_new_labels = torch.LongTensor(batched_new_labels).view(batch_size, 1)
+
+        if self.use_cuda:
+            batched_new_labels = batched_new_labels.cuda()
+
+        _, batched_new_structure_embeddings = self.context_model(None, batched_new_labels)
+        return batched_new_structure_embeddings, batched_new_labels
 
     def _init_state(self, encoder_hidden):
         if encoder_hidden is None:
@@ -202,8 +258,7 @@ class DecoderRNNFB(BaseRNN):
             if teacher_forcing_ratio > 0:
                 raise ValueError("Teacher forcing has to be disabled (set 0) when no inputs is provided.")
             inputs = torch.LongTensor([self.sos_id] * batch_size).view(batch_size, 1)
-            if torch.cuda.is_available():
-                inputs = inputs.cuda()
+            if self.use_cuda: inputs = inputs.cuda()
             max_length = self.max_length
         else:
             max_length = inputs.size(1) - 1   

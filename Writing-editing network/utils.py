@@ -41,7 +41,6 @@ def plot_topical_encoding(topic_dictionary, topical_embeddings, tensorboardX_wri
 class Vectorizer:
     def __init__(self, max_words=None, min_frequency=None, start_end_tokens=True, maxlen=None):
         self.vocabulary = None
-        self.vocabulary_size = 0
         self.word2idx = dict()
         self.idx2word = dict()
         #most common words
@@ -49,20 +48,11 @@ class Vectorizer:
         #least common words
         self.min_frequency = min_frequency
         self.start_end_tokens = start_end_tokens
-        self.maxlen = maxlen
         self.context_vectorizer = {}
 
     def topics_to_index_tensor(self, topics):
         vec = [self.context_vectorizer[t] if t in self.context_vectorizer else self.context_vectorizer["algorithm"] for t in topics]
         return vec
-
-    def _find_max_sentence_length(self, corpus, template):
-        if not template:
-            self.maxlen = max(len(sent) for document in corpus for sent in document)
-        else:
-            self.maxlen = max(len(sent) for sent in corpus)
-        if self.start_end_tokens:
-            self.maxlen += 2
 
     def _build_vocabulary(self, corpus, template):
         if not template:
@@ -76,9 +66,6 @@ class Vectorizer:
             vocabulary = {word: freq for word, freq in vocabulary.items()
                           if freq >= self.min_frequency}
         self.vocabulary = vocabulary
-        self.vocabulary_size = len(vocabulary) + 2  # padding and unk tokens
-        if self.start_end_tokens:
-            self.vocabulary_size += 2
 
     def _build_word_index(self):
         self.word2idx['<UNK>'] = 3
@@ -88,14 +75,12 @@ class Vectorizer:
             self.word2idx['<EOS>'] = 1
             self.word2idx['<SOS>'] = 2
 
-        offset = len(self.word2idx)
         for idx, word in enumerate(self.vocabulary):
-            self.word2idx[word] = idx + offset
+            if word not in self.word2idx:
+                self.word2idx[word] = len(self.word2idx)
         self.idx2word = {idx: word for word, idx in self.word2idx.items()}
 
     def fit(self, corpus, template = False):
-        if not self.maxlen:
-            self._find_max_sentence_length(corpus, template)
         self._build_vocabulary(corpus, template)
         self._build_word_index()
 
@@ -126,13 +111,15 @@ class Vectorizer:
         return vcorpus
 
 class headline2abstractdataset(Dataset):
-    def __init__(self, path, vectorizer, USE_CUDA=torch.cuda.is_available(), max_len=200):
+    def __init__(self, path, vectorizer, USE_CUDA=False, max_len=200, use_topics=False, use_structure_info=False):
+        self.use_topics = use_topics
+        self.use_structure_info = use_structure_info
         self.head_len = 0
         self.abs_len = 0
         self.max_len = max_len
         self.max_context_length = 1
         self.vectorizer = vectorizer
-        self.corpus, self.topics_corpus = self._read_corpus(path)
+        self.corpus, self.topics_corpus, self.abstract_structures = self._read_corpus(path)
         self.data = self._vectorize_corpus()
         self._initalcorpus()
         self.USE_CUDA = USE_CUDA
@@ -145,10 +132,16 @@ class headline2abstractdataset(Dataset):
 
     def _initalcorpus(self):
         old = []
-        for i, j in zip(self.data, self.topics_corpus):
-            source = i[0]
-            target = i[1]
-            vectorized_topics = j
+        for i, content in enumerate(self.data):
+            source = content[0]
+            target = content[1]
+            contextual_dictionary = {}
+
+            if self.use_topics:
+                contextual_dictionary["topics"] = self.topics_corpus[i]
+            if self.use_structure_info:
+                contextual_dictionary["structure"] = self.abstract_structures[i]
+
             if len(source) > self.head_len:
                 self.head_len = len(source)
             if len(target) <= self.max_len:
@@ -158,12 +151,17 @@ class headline2abstractdataset(Dataset):
                 target = target[:self.max_len-1]
                 target.append(1)#word2idx['<EOS>'] = 1
                 self.abs_len = len(target)
-            old.append((source[1:-1], target, vectorized_topics))
-        old.sort(key = lambda x: len(x[0]), reverse = True)
+
+            old.append((source[1:-1], target, contextual_dictionary))
+        old.sort(key=lambda x: len(x[0]), reverse = True)
         corpus = []
-        for source, target, vectorized_topics in old:
-            vectorized_topics = self.pad_sentence_vector(vectorized_topics, self.max_context_length, pad_value=self.vectorizer.context_vectorizer['algorithm'])
-            team = [len(source), len(target), self.pad_sentence_vector(source, self.head_len), self.pad_sentence_vector(target, self.abs_len), vectorized_topics]
+        for source, target, contextual_dictionary in old:
+
+            if self.use_topics:
+                contextual_dictionary["topics"] = self.pad_sentence_vector(contextual_dictionary["topics"], self.max_context_length, pad_value=self.vectorizer.context_vectorizer['algorithm'])
+            if self.use_structure_info:
+                contextual_dictionary["structure"] = self.pad_sentence_vector(contextual_dictionary["structure"], self.abs_len, pad_value=3)
+            team = [len(source), len(target), self.pad_sentence_vector(source, self.head_len), self.pad_sentence_vector(target, self.abs_len), contextual_dictionary]
             corpus.append(team)
         self.data = corpus
 
@@ -171,6 +169,7 @@ class headline2abstractdataset(Dataset):
         abstracts = []
         headlines = []
         topics = []
+        labels = []
         i = 0
         with open(path, encoding="utf-8") as f:
             for line in f:
@@ -179,27 +178,17 @@ class headline2abstractdataset(Dataset):
                 abstracts.append(j["abstract"])
                 if "topics" in j:
                     topics.append(j["topics"])
+                if "labels" in j:
+                    labels.append(j["labels"])
                 i += 1
-        corpus = []
-        topics_v = []
         self.vectorizer.context_vectorizer['algorithm'] = 0
-        for i in range(len(abstracts)):
-            if len(headlines[i]) > 0 and len(abstracts[i]) > 0:
-                h_a_pair = []
-                h_a_pair.append(self._tokenize_word(headlines[i]))
-                h_a_pair.append(self._tokenize_word(abstracts[i]))
-                if len(h_a_pair) > 1:
-                    corpus.append(h_a_pair)
-                    vectorized_topics = []
-                    if topics:
-                        for t in topics[i]:
-                            t = t.lower()
-                            if t not in self.vectorizer.context_vectorizer:
-                                self.vectorizer.context_vectorizer[t] = len(self.vectorizer.context_vectorizer)
-                            vectorized_topics.append(self.vectorizer.context_vectorizer[t])
-                        self.max_context_length = max(self.max_context_length, len(vectorized_topics))
-                    topics_v.append(vectorized_topics)
-        return corpus, topics_v
+        self.vectorizer.context_vectorizer['introduction'] = 1
+        self.vectorizer.context_vectorizer['body'] = 2
+        self.vectorizer.context_vectorizer['conclusion'] = 3
+        corpus = self._read_data(headlines, abstracts)
+        topics_v = self._read_topics(topics)
+        abstract_structures = self._read_structure(labels)
+        return corpus, topics_v, abstract_structures
 
     def _tokenize_word(self, sentence):
         result = []
@@ -214,16 +203,54 @@ class headline2abstractdataset(Dataset):
             self.vectorizer.fit(self.corpus)
         return self.vectorizer.transform(self.corpus)
 
+    def _read_data(self, headlines, abstracts):
+        corpus = []
+        for i in range(len(abstracts)):
+            if len(headlines[i]) > 0 and len(abstracts[i]) > 0:
+                h_a_pair = []
+                h_a_pair.append(self._tokenize_word(headlines[i]))
+                h_a_pair.append(self._tokenize_word(abstracts[i]))
+                if len(h_a_pair) > 1:
+                    corpus.append(h_a_pair)
+        return corpus
+
+    def _read_topics(self, topics):
+        topics_v = []
+        for i in range(len(topics)):
+            vectorized_topics = []
+            if topics:
+                for t in topics[i]:
+                    t = t.lower()
+                    if t not in self.vectorizer.context_vectorizer:
+                        self.vectorizer.context_vectorizer[t] = len(self.vectorizer.context_vectorizer)
+                    vectorized_topics.append(self.vectorizer.context_vectorizer[t])
+                self.max_context_length = max(self.max_context_length, len(vectorized_topics))
+            topics_v.append(vectorized_topics)
+        return topics_v
+
+    def _read_structure(self, structure_info):
+        structure = []
+        for i in range(len(structure_info)):
+            tokenised = [self.vectorizer.context_vectorizer[s] for s in structure_info[i]]
+            if self.vectorizer.start_end_tokens:
+                tokenised.append(self.vectorizer.context_vectorizer['conclusion'])
+            tokenised = [self.vectorizer.context_vectorizer['introduction']] + tokenised
+            structure.append(tokenised)
+
+        return structure
+
     def __getitem__(self, index):
-        len_s, len_t, source, target, topics = self.data[index]
-        source = torch.LongTensor(source)
-        topics = torch.LongTensor(topics)
-        target = torch.LongTensor(target)
-        if self.USE_CUDA:
-            source = source.cuda()
-            target = target.cuda()
-            topics = topics.cuda()
-        return source, target, len_s, topics
+        len_s, len_t, source, target, context_dictionary = self.data[index]
+        source = torch.LongTensor(source).cuda() if self.USE_CUDA else torch.LongTensor(source)
+        target = torch.LongTensor(target).cuda() if self.USE_CUDA else torch.LongTensor(target)
+        ret = [source, target, len_s]
+        if self.use_topics:
+            topics = (torch.LongTensor(context_dictionary["topics"]).cuda() if self.USE_CUDA else torch.LongTensor(context_dictionary["topics"])) if self.use_topics else None
+            ret.append(topics)
+        if self.use_structure_info:
+            structure_abstracts = (torch.LongTensor(context_dictionary["structure"]).cuda() if self.USE_CUDA else torch.LongTensor(context_dictionary["structure"])) if self.use_structure_info else None
+            ret.append(structure_abstracts)
+        return ret
 
     def __len__(self):
         return len(self.data)
