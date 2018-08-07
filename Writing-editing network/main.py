@@ -370,8 +370,12 @@ if __name__ == "__main__":
             f_out.close()
         f_out.close()
     elif args.mode == 3:
+        test_data_path = cwd + config.relative_test_path
+        test_abstracts = headline2abstractdataset(test_data_path, vectorizer, args.cuda, max_len=1000,
+                                                        use_topics=config.use_topics,
+                                                        use_structure_info=config.use_labels)
         load_checkpoint()
-        test_loader = DataLoader(validation_abstracts, config.batch_size)
+        test_loader = DataLoader(test_abstracts, config.batch_size)
         eval_f = Evaluate()
         num_exams = 3
         predictor = Predictor(model, validation_abstracts.vectorizer, use_cuda=args.cuda)
