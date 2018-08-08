@@ -12,6 +12,7 @@ class CommonConfig(object):
     log_interval = 1000
     predict_right_after = 3
     patience = 5
+    advantage_clipping = 5
 
 class SmallDatasetWithTopics(CommonConfig):
     relative_data_path = '/data/small-json-topics/train.dat'

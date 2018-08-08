@@ -17,6 +17,7 @@ import configurations
 from pprint import pprint
 sys.path.insert(0,'..')
 from eval import Evaluate
+from torch.autograd import Variable
 
 cudnn.benchmark = True
 parser = argparse.ArgumentParser(description='seq2seq model')
@@ -78,11 +79,11 @@ model = FbSeq2seq(encoder_title, encoder, context_encoder, decoder)
 
 """ Define the Discriminator model here """
 
-discrim_encoder = Encoder(config.emsize, config.emsize, vocab_size, config.batch_size, use_cuda=args.cuda)
-discrim_decoder = DecoderRNN(config.emsize, config.emsize, vocab_size, 1, config.batch_size)
+discrim_encoder = Encoder(config.emsize, config.emsize, vocab_size, use_cuda=args.cuda)
+discrim_decoder = DecoderRNN(config.emsize, config.emsize, vocab_size, 1)
 discrim_model = Discriminator(discrim_encoder, discrim_decoder, use_cuda=args.cuda)
 discrim_criterion = nn.BCELoss()
-critic_model = Critic(config.emsize, config.emsize, vocab_size, config.batch_size, use_cuda=args.cuda)
+critic_model = Critic(config.emsize, config.emsize, vocab_size, use_cuda=args.cuda)
 
 """ Ends here """
 
@@ -102,7 +103,7 @@ if args.cuda:
     discrim_criterion = discrim_criterion.cuda()
     criterion = criterion.cuda()
 optimizer = optim.Adam(list(model.parameters()) + list(discrim_model.parameters()) + list(critic_model.parameters()), lr=config.lr)
-i
+
 # Mask variable
 def _mask(prev_generated_seq):
     prev_mask = torch.eq(prev_generated_seq, 1)
@@ -152,13 +153,19 @@ def unfreeze_critic():
 
 
 def train_discriminator(input_variable, target_variable, is_eval=False):
+
+    batch_size = input_variable.shape[0]
+
     sequence_length = input_variable.shape[1]
     '''add other return values'''
-    dis_out, dis_sig = discrim_model(input_variable, sequence_length, config.batch_size)
+    dis_out, dis_sig = discrim_model(input_variable, sequence_length, batch_size)
+    
+    #print(dis_sig)
+
     loss = discrim_criterion(dis_sig, target_variable)
 
-    est_values = critic_model(input_variable)
-    critic_loss = criticLoss(dis_out, est_values, sequence_length, config, args.cuda)
+    est_values = critic_model(input_variable, batch_size)
+    critic_loss = criticLoss(dis_out, est_values, sequence_length, batch_size, config, args.cuda)
 
     """ Check if we need this if condition here, since we are freezing the weights anyhow """
     if not is_eval:
@@ -166,6 +173,7 @@ def train_discriminator(input_variable, target_variable, is_eval=False):
         unfreeze_discriminator()
         freeze_critic()
 
+        loss = Variable(loss, requires_grad=True)
         discrim_model.zero_grad()
         loss.backward(retain_graph=True)
         optimizer.step()
@@ -213,15 +221,23 @@ def train_generator(input_variable, input_lengths, target_variable, topics, mode
             #input is the batch_size * sequence length of word to index of abstracts
             gen_log = torch.stack(probabilities[i])
             discrim_input = torch.stack(drafts[i])
+
+            batch_size = discrim_input.shape[0]
+
             sequence_length = discrim_input.shape[1]
-            est_values = critic_model(discrim_input)
-            dis_out, dis_sig = discrim_model(discrim_input, sequence_length, config.batch_size)
+            est_values = critic_model(discrim_input, batch_size)
+            dis_out, dis_sig = discrim_model(discrim_input, sequence_length, batch_size)
             #gen_log is the log probabilities of generator output
-            reinforce_loss, final_gen_obj = reinforce(gen_log, dis_out, est_values, sequence_length, config, args.cuda)
+            reinforce_loss, final_gen_obj = reinforce(gen_log, dis_out, est_values, sequence_length, batch_size, config, args.cuda)
         else:
             reinforce_loss = 0
 
-        lossi = criterion(decoder_outputs_reshaped, target_variable_reshaped) + reinforce_loss
+        #print("Reinforce loss : ")
+        #print(reinforce_loss)
+        #print("Gen_cross entropy loss : ")
+        #print(criterion(decoder_outputs_reshaped, target_variable_reshaped))
+
+        lossi = criterion(decoder_outputs_reshaped, target_variable_reshaped) + ( 0.001 * reinforce_loss )
         loss_list.append(lossi.item())
         if not is_eval:
             model.zero_grad()
@@ -302,12 +318,17 @@ def train_epoches(dataset, model, n_epochs, teacher_forcing_ratio):
     # discriminator while training.
     load_training_samples_for_shuffling(dataset)
     for epoch in range(1, n_epochs + 1):
+    #for epoch in range(1, 2):
         model.train(True)
         epoch_examples_total = 0
         total_examples = 0
         start = time.time()
         epoch_start_time = start
         total_loss = 0
+        total_dis = 0
+        total_gen = 0
+        total_critic = 0
+        n_batch = 0
         training_loss_list = [0] * config.num_exams
         for batch_idx, (source, target, input_lengths, topics) in enumerate(train_loader):
             input_variables = source
@@ -322,8 +343,16 @@ def train_epoches(dataset, model, n_epochs, teacher_forcing_ratio):
             loss_list = train_batch(input_variables, input_lengths,
                         target_variables, topics, teacher_forcing_ratio, True)
 
+            n_batch = n_batch + 1
+            print("Epoch : ")
+            print(epoch)
+            print("Batch : ")
+            print(n_batch)
             print("Discrim loss is:", discrim_loss, "Critic Loss is: ", critic_loss, "Gen loss is:", loss_list)
-            exit(0)
+            #average dis and critic loss for logging
+            total_dis = total_dis + discrim_loss
+            total_critic = total_critic + critic_loss
+            total_gen = total_gen + loss_list[0]
             # Record average loss
             num_examples = len(source)
             epoch_examples_total += num_examples
@@ -344,7 +373,10 @@ def train_epoches(dataset, model, n_epochs, teacher_forcing_ratio):
                     epoch, total_examples, len(train_loader.dataset), optimizer.param_groups[0]['lr'],
                                            elapsed * 1000 / config.log_interval, cur_loss),
                     flush=True)
-
+        #logging average loss for plotting
+        writer.add_scalar('loss/train/train_dis_loss', total_dis/n_batch , epoch)
+        writer.add_scalar('loss/train/train_gen_loss', total_gen/n_batch , epoch)
+        writer.add_scalar('loss/train/train_critic_loss', total_critic/n_batch , epoch)
         validation_loss = evaluate(validation_abstracts, model, teacher_forcing_ratio)
         if config.use_topics:
             plot_topical_encoding(vectorizer.context_vectorizer, model.context_encoder.embedding, writer, epoch)
