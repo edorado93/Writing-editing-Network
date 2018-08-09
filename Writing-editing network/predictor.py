@@ -147,7 +147,7 @@ class Predictor(object):
                 for j in range(len(length)):
                     out_seq = [other['sequence'][di][j] for di in range(length[j])]
                     out = self.prepare_for_bleu(out_seq)
-                    cands[k][len(cands[k])] = out
+                    cands[k][len(cands[k]) + 1] = out
                 if use_labels:
                     structure_abstracts = torch.stack(other['gen_labels'], 1).squeeze(2)
             if i % 100 == 0:
