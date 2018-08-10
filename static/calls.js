@@ -1,6 +1,17 @@
 topicsSelectedCount = 0;
 
+function emptyTopics(myNode) {
+  while (myNode.firstChild) {
+    myNode.removeChild(myNode.firstChild);
+  }
+}
+
+
 function getTopics() {
+    emptyTopics(document.getElementById("topics-left"));
+    emptyTopics(document.getElementById("topics-mid"));
+    emptyTopics(document.getElementById("topics-right"));
+
     URL = "http://0.0.0.0:5000/getTopics";
     var title = document.getElementById("title").value;
     var xmlHttp = new XMLHttpRequest();

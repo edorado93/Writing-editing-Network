@@ -8,16 +8,32 @@
 
 .topics_display {
   margin-top: 2em;
+  font-size: 0.7em;
+}
+
+.list-group-item {
+    padding: .45rem 1rem;
+}
+
+.btn:focus {
+  outline: none;
+}
+
+.col-sm {
+  padding-left: 0em;
+  padding-right: 0.9em;
 }
 
 #alert {
   color: red;
-  font-size: 0.7em;
+  font-size: 1em;
   margin-top: 1em;
+  margin-left: -0.6em;
 }
 
 #submit {
-  margin-top: 2em;
+  margin-top: 1.5em;
+  margin-left: -0.6em;
 }
 
 .abstract {
