@@ -12,7 +12,7 @@ function getTopics() {
     emptyTopics(document.getElementById("topics-mid"));
     emptyTopics(document.getElementById("topics-right"));
 
-    URL = "http://0.0.0.0:5000/getTopics";
+    URL = window.location.href + "getTopics";
     var title = document.getElementById("title").value;
     var xmlHttp = new XMLHttpRequest();
     xmlHttp.onreadystatechange = function() {
@@ -73,7 +73,7 @@ function generateAbstracts(e) {
       maxprogress = 500; // when to leave stop running the animation
       animate()
 
-      URL = "http://0.0.0.0:5000/getAbstracts";
+      URL = window.location.href + "getAbstracts";
       var title = document.getElementById("title").value;
       var topics = Array.from(document.getElementsByClassName("list-group-item active"))
       var active_topics = [];

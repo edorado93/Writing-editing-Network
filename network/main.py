@@ -18,82 +18,89 @@ import os.path
 sys.path.insert(0,'..')
 from eval import Evaluate
 
-cudnn.benchmark = True
-parser = argparse.ArgumentParser(description='seq2seq model')
-parser.add_argument('--seed', type=int, default=1111,
-                    help='random seed')
-parser.add_argument('--cuda', action='store_true',
-                    help='use CUDA')
-parser.add_argument('--mode', type=int,  default=0,
-                    help='train(0)/predict_sentence(1)/predict_file(2) or evaluate(3)')
-parser.add_argument('--conf', type=str,
-                    help="configuration to load for the training")
-args = parser.parse_args()
-config = configurations.get_conf(args.conf)
-writer = SummaryWriter("saved_runs/" + config.experiment_name)
-v = vars(args)
-v['save'] = "models/"+config.experiment_name + '.pkl'
+args, model, criterion, optimizer, config, vectorizer, abstracts, validation_abstracts, writer, validation_eval, vocab_size \
+ = None, None, None, None, None, None, None, None, None, None, None
 
-# Set the random seed manually for reproducibility.
-torch.manual_seed(args.seed)
-if torch.cuda.is_available():
-    if not args.cuda:
-        print("WARNING: You have a CUDA device, so you should probably run with --cuda")
-    else:
-        torch.cuda.manual_seed(args.seed)
+def make_parser():
+    parser = argparse.ArgumentParser(description='seq2seq model')
+    parser.add_argument('--seed', type=int, default=1111,
+                        help='random seed')
+    parser.add_argument('--cuda', action='store_true',
+                        help='use CUDA')
+    parser.add_argument('--mode', type=int,  default=0,
+                        help='train(0)/predict_sentence(1)/predict_file(2) or evaluate(3)')
+    parser.add_argument('--conf', type=str,
+                        help="configuration to load for the training")
 
-validation_eval = Evaluate()
-cwd = os.getcwd()
-vectorizer = Vectorizer(min_frequency=config.min_freq)
+    return parser.parse_known_args()
 
-data_path = cwd + config.relative_data_path
-abstracts = headline2abstractdataset(data_path, vectorizer, args.cuda, max_len=1000, use_topics=config.use_topics, use_structure_info=config.use_labels)
+def init(conf, seed, cuda):
+    cudnn.benchmark = True
+    config = configurations.get_conf(conf)
+    writer = SummaryWriter("saved_runs/" + config.experiment_name)
 
-validation_data_path = cwd + config.relative_dev_path
-validation_abstracts = headline2abstractdataset(validation_data_path, vectorizer, args.cuda, max_len=1000, use_topics=config.use_topics, use_structure_info=config.use_labels)
+    # Set the random seed manually for reproducibility.
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        if not cuda:
+            print("WARNING: You have a CUDA device, so you should probably run with --cuda")
+        else:
+            torch.cuda.manual_seed(seed)
 
-print("number of training examples: %d" % len(abstracts))
+    validation_eval = Evaluate()
+    cwd = os.getcwd()
+    vectorizer = Vectorizer(min_frequency=config.min_freq)
 
-context_encoder = None
-vocab_size = len(vectorizer.word2idx)
-embedding = nn.Embedding(vocab_size, config.emsize, padding_idx=0)
+    data_path = cwd + config.relative_data_path
+    abstracts = headline2abstractdataset(data_path, vectorizer, cuda, max_len=1000, use_topics=config.use_topics, use_structure_info=config.use_labels)
 
-if config.pretrained:
-    embedding = load_embeddings(embedding, abstracts.vectorizer.word2idx, config.pretrained, config.emsize)
+    validation_data_path = cwd + config.relative_dev_path
+    validation_abstracts = headline2abstractdataset(validation_data_path, vectorizer, cuda, max_len=1000, use_topics=config.use_topics, use_structure_info=config.use_labels)
 
-if config.use_topics or config.use_labels:
-    context_encoder = ContextEncoder(config.context_dim, len(vectorizer.context_vectorizer), config.emsize)
+    print("number of training examples: %d" % len(abstracts))
 
-title_encoder_rnn_dim = config.emsize + (config.use_topics * abstracts.max_context_length) * config.context_dim
-abstract_encoder_rnn_dim = config.emsize + (config.use_labels + config.use_topics * abstracts.max_context_length) * config.context_dim
+    context_encoder = None
+    vocab_size = len(vectorizer.word2idx)
+    embedding = nn.Embedding(vocab_size, config.emsize, padding_idx=0)
 
-structure_labels = {"introduction" : abstracts.vectorizer.context_vectorizer["introduction"],
-                    "body" : abstracts.vectorizer.context_vectorizer["body"],
-                    "conclusion": abstracts.vectorizer.context_vectorizer["conclusion"],
-                    "full_stop": abstracts.vectorizer.word2idx["."],
-                    "question_mark": abstracts.vectorizer.word2idx["?"]}
+    if config.pretrained:
+        embedding = load_embeddings(embedding, abstracts.vectorizer.word2idx, config.pretrained, config.emsize)
 
-encoder_title = EncoderRNN(vocab_size, embedding, abstracts.head_len, title_encoder_rnn_dim, abstract_encoder_rnn_dim, input_dropout_p=config.dropout,
-                     n_layers=config.nlayers, bidirectional=config.bidirectional, rnn_cell=config.cell)
-encoder = EncoderRNN(vocab_size, embedding, abstracts.abs_len, abstract_encoder_rnn_dim, abstract_encoder_rnn_dim, input_dropout_p=config.dropout, variable_lengths = False,
-                  n_layers=config.nlayers, bidirectional=config.bidirectional, rnn_cell=config.cell)
-decoder = DecoderRNNFB(vocab_size, embedding, abstracts.abs_len, abstract_encoder_rnn_dim, sos_id=2, eos_id=1,
-                     n_layers=config.nlayers, rnn_cell=config.cell, bidirectional=config.bidirectional,
-                     input_dropout_p=config.dropout, dropout_p=config.dropout, labels=structure_labels, use_labels=config.use_labels, context_model=context_encoder, use_cuda=args.cuda)
-model = FbSeq2seq(encoder_title, encoder, context_encoder, decoder)
-total_params = sum(x.size()[0] * x.size()[1] if len(x.size()) > 1 else x.size()[0] for x in model.parameters())
-print('Model total parameters:', total_params, flush=True)
-configurations.print_config(config)
+    if config.use_topics or config.use_labels:
+        context_encoder = ContextEncoder(config.context_dim, len(vectorizer.context_vectorizer), config.emsize)
 
-if config.dataparallel and torch.cuda.device_count() > 1:
-    print("Let's use", torch.cuda.device_count(), "GPUs!")
-    model = nn.DataParallel(model)
+    title_encoder_rnn_dim = config.emsize + (config.use_topics * abstracts.max_context_length) * config.context_dim
+    abstract_encoder_rnn_dim = config.emsize + (config.use_labels + config.use_topics * abstracts.max_context_length) * config.context_dim
 
-criterion = nn.CrossEntropyLoss(ignore_index=0)
-if args.cuda:
-    model = model.cuda()
-    criterion = criterion.cuda()
-optimizer = optim.Adam(model.parameters(), lr=config.lr)
+    structure_labels = {"introduction" : abstracts.vectorizer.context_vectorizer["introduction"],
+                        "body" : abstracts.vectorizer.context_vectorizer["body"],
+                        "conclusion": abstracts.vectorizer.context_vectorizer["conclusion"],
+                        "full_stop": abstracts.vectorizer.word2idx["."],
+                        "question_mark": abstracts.vectorizer.word2idx["?"]}
+
+    encoder_title = EncoderRNN(vocab_size, embedding, abstracts.head_len, title_encoder_rnn_dim, abstract_encoder_rnn_dim, input_dropout_p=config.dropout,
+                         n_layers=config.nlayers, bidirectional=config.bidirectional, rnn_cell=config.cell)
+    encoder = EncoderRNN(vocab_size, embedding, abstracts.abs_len, abstract_encoder_rnn_dim, abstract_encoder_rnn_dim, input_dropout_p=config.dropout, variable_lengths = False,
+                      n_layers=config.nlayers, bidirectional=config.bidirectional, rnn_cell=config.cell)
+    decoder = DecoderRNNFB(vocab_size, embedding, abstracts.abs_len, abstract_encoder_rnn_dim, sos_id=2, eos_id=1,
+                         n_layers=config.nlayers, rnn_cell=config.cell, bidirectional=config.bidirectional,
+                         input_dropout_p=config.dropout, dropout_p=config.dropout, labels=structure_labels, use_labels=config.use_labels, context_model=context_encoder, use_cuda=cuda)
+    model = FbSeq2seq(encoder_title, encoder, context_encoder, decoder)
+    total_params = sum(x.size()[0] * x.size()[1] if len(x.size()) > 1 else x.size()[0] for x in model.parameters())
+    print('Model total parameters:', total_params, flush=True)
+    configurations.print_config(config)
+
+    if config.dataparallel and torch.cuda.device_count() > 1:
+        print("Let's use", torch.cuda.device_count(), "GPUs!")
+        model = nn.DataParallel(model)
+
+    criterion = nn.CrossEntropyLoss(ignore_index=0)
+    if cuda:
+        model = model.cuda()
+        criterion = criterion.cuda()
+    optimizer = optim.Adam(model.parameters(), lr=config.lr)
+
+    return config, model, criterion, optimizer, vectorizer, abstracts, validation_abstracts, writer, validation_eval, vocab_size
 
 # Mask variable
 def _mask(prev_generated_seq):
@@ -306,6 +313,11 @@ def load_checkpoint():
     return start_epoch
 
 if __name__ == "__main__":
+    args, unknown = make_parser()
+    config, model, criterion, optimizer, vectorizer, abstracts, validation_abstracts, writer, validation_eval, vocab_size = init(args.conf, args.seed, args.cuda)
+    v = vars(args)
+    v['save'] = "models/"+config.experiment_name + '.pkl'
+
     if args.mode == 0:
         # train
         try:

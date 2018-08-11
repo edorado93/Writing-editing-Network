@@ -8,7 +8,9 @@ from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 sys.path.insert(0, "network/")
 from time import  sleep
-# from network import main
+from network.predictor import Predictor
+from network import configurations
+from network import main
 
 def load_pretrained_ARXIV_embeddings():
     # Loading PreTrained Word Embeddings. Will be used to find out 10 relevant topics
@@ -48,17 +50,31 @@ def get_top_10_relevant_topics(title):
     ans = sorted(ans, key=lambda x: x[1], reverse=True)
     return [a[0] for a in ans[:10]]
 
-# # Load set of words and their embeddings in our pretrained WE.
-# pretrained_words, en_model = load_pretrained_ARXIV_embeddings()
-#
-# # Obtain average word embeddings for each of the 76 titles that we have.
-# topical_embeddings = topical_word_embeddings()
-#
-# # The configuration to load for the model
-# config = main.config
-#
-# # Loading the saved model which will now be used for generation.
-# model = main.load_checkpoint("models/"+config.experiment_name + '.pkl', model)
+use_cuda = torch.cuda.is_available()
+
+# The configuration to load for the model
+conf = "l4"
+
+# Initialize the bare bones model
+config, model, _, _, vectorizer = main.init(conf, 1111, use_cuda)[0:5]
+
+# Loading the saved model which will now be used for generation.
+save = "models/"+config.experiment_name + '.pkl'
+print("==> Loading checkpoint", save)
+checkpoint = torch.load(save)
+model.load_state_dict(checkpoint['state_dict'])
+print("==> Successfully Loaded checkpoint", save)
+
+# Load the predictor object that shall be used for generation.
+predictor = Predictor(model, vectorizer, use_cuda=use_cuda)
+
+# Load set of words and their embeddings in our pretrained WE.
+pretrained_words, en_model = load_pretrained_ARXIV_embeddings()
+
+# Obtain average word embeddings for each of the 76 titles that we have.
+topical_embeddings = topical_word_embeddings()
+
+print("Loaded pretrained word embeddings")
 
 # Defining the flask app
 app = Flask(__name__)
@@ -69,8 +85,7 @@ app = Flask(__name__)
 def get_topics():
     data = request.get_json()
     title_entered_by_user = data["title"]
-    # topics = get_top_10_relevant_topics(title_entered_by_user)
-    topics = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']
+    topics = get_top_10_relevant_topics(title_entered_by_user)
     return jsonify({"topics": topics})
 
 @app.route('/getAbstracts', methods=['POST'])
@@ -78,9 +93,13 @@ def get_abstract():
     data = request.get_json()
     title_entered_by_user = data["title"]
     topics_entered = data["topics"]
-    sleep(4);
-    return jsonify({"abstract": "Hello My name is Sachin Malhotra and this is an abstract"*5})
-
+    seq = title_entered_by_user.strip().split(' ')
+    topics = vectorizer.topics_to_index_tensor(topics_entered)
+    num_exams = 2
+    max_length = 200
+    print("Generating now")
+    outputs = predictor.predict(seq, num_exams, max_length=max_length, topics=topics, use_structure=config.use_labels)
+    return jsonify({"abstract": outputs[1]})
 
 @app.route('/')
 def root():
