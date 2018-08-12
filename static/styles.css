@@ -36,6 +36,11 @@
   margin-left: -0.6em;
 }
 
+#more-topics {
+  margin-top: 1.5em;
+  margin-left: 0.8em;
+}
+
 .abstract {
   padding: 1em 1em 1em 1em;
   box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);

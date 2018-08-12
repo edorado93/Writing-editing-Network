@@ -1,4 +1,6 @@
-topicsSelectedCount = 0;
+var topicsSelectedCount = 0;
+var topicsShownToUser = [];
+var displayedTopics = [];
 
 function emptyTopics(myNode) {
   while (myNode.firstChild) {
@@ -6,11 +8,10 @@ function emptyTopics(myNode) {
   }
 }
 
-
 function getTopics() {
-    emptyTopics(document.getElementById("topics-left"));
-    emptyTopics(document.getElementById("topics-mid"));
-    emptyTopics(document.getElementById("topics-right"));
+
+    topicsShownToUser = []
+    topicsSelectedCount = 0
 
     URL = window.location.href + "getTopics";
     var title = document.getElementById("title").value;
@@ -18,7 +19,7 @@ function getTopics() {
     xmlHttp.onreadystatechange = function() {
         if (this.readyState == 4 && this.status == 200) {
             data = JSON.parse(this.responseText);
-            populateTopics(data["topics"]);
+            loadTopics(data["topics"]);
         }
     }
     xmlHttp.open("POST", URL, true);
@@ -39,8 +40,6 @@ function selectTopic(e) {
         topicsSelectedCount++;
     }
 }
-
-
 
 function animate() {
     setTimeout(function () {
@@ -102,23 +101,53 @@ function populateAbstract(abstract) {
     document.getElementsByClassName("abstract")[0].innerHTML  = abstract;
 }
 
+function loadTopics(topics) {
 
-function populateTopics(topics) {
+    displayedTopics = [];
+    for(i = 0; i < topics.length; i++) {
+        topicsShownToUser.push(topics[i]);
+    }
+    populateTopics();
+}
+
+function populateTopics() {
+    emptyTopics(document.getElementById("topics-left"));
+    emptyTopics(document.getElementById("topics-mid"));
+    emptyTopics(document.getElementById("topics-right"));
+
     var divs = ["topics-mid", "topics-right"];
     var topics_list = document.getElementById("topics-left");
     var j = 0;
-    for(i = 1; i <= topics.length; i++) {
+    var i = 0;
+    for(k = 0; k < topicsShownToUser.length; k++)
+    {
+        if (displayedTopics.includes(topicsShownToUser[k])) {
+            continue;
+        }
+
+        displayedTopics.push(topicsShownToUser[k]);
         var entry = document.createElement('li');
         entry.onclick = selectTopic;
-        entry.appendChild(document.createTextNode(topics[i - 1]));
+        entry.appendChild(document.createTextNode(topicsShownToUser[k]));
         entry.classList.add("list-group-item");
         topics_list.appendChild(entry);
+        i++;
 
         if (i % 4 == 0) {
-          console.log(divs[j]);
           topics_list = document.getElementById(divs[j]);
           j++;
         }
+
+        if (i == 10) {
+          break;
+        }
+
     }
     document.getElementById("submit").removeAttribute("hidden");
+
+    if (displayedTopics.length == 76) {
+        document.getElementById("more-topics").setAttribute("hidden", true);
+    } else {
+        document.getElementById("more-topics").removeAttribute("hidden");
+    }
 }
