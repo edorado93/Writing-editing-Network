@@ -134,15 +134,28 @@ def train_batch(input_variable, input_lengths, target_variable, topics, structur
 
         decoder_outputs_reshaped = decoder_outputs.view(-1, vocab_size)
         lossi = criterion(decoder_outputs_reshaped, target_variable_reshaped)
+
+        # Current output of the model. This will be the previously generated abstract for the model.
+        prev_generated_seq = torch.squeeze(torch.topk(decoder_outputs, 1, dim=2)[1]).view(-1, decoder_outputs.size(1))
+
+        detached_generated_sequence = prev_generated_seq.detach()
+        prev_words_CE_loss = 0
+        number_of_words_in_each_abstract = decoder_outputs.shape[1]
+        K = 3
+        j = 0
+        for i in range(K, number_of_words_in_each_abstract, K):
+            prev_words_CE_loss += cross_entropy_with_previously_generated_words(i, detached_generated_sequence, decoder_outputs[:,i,:], K)
+            j += 1
+
+        # We want to maximise the cross entropy of each word with the previous words being considered as ground truth. Hence, we subtract.
+        lossi = lossi - (prev_words_CE_loss / j)
+
         loss_list.append(lossi.item())
         if not is_eval:
             model.zero_grad()
             lossi.backward(retain_graph=True)
             torch.nn.utils.clip_grad_norm_(model.parameters(), config.max_grad_norm)
             optimizer.step()
-
-        # Current output of the model. This will be the previously generated abstract for the model.
-        prev_generated_seq = torch.squeeze(torch.topk(decoder_outputs, 1, dim=2)[1]).view(-1, decoder_outputs.size(1))
 
         # If we are in eval mode, obtain words for generated sequences. This will be used for the BLEU score.
         if is_eval:
@@ -154,6 +167,13 @@ def train_batch(input_variable, input_lengths, target_variable, topics, structur
         return loss_list, sentences, drafts
 
     return loss_list
+
+# For current_index = 520, the for loop took 280ms whereas the tensor optimized version took 1.24ms. That's a huge difference.
+def cross_entropy_with_previously_generated_words(current_index, detached_generated_words, softmax_distribution, K):
+    softmax_distribution = softmax_distribution.unsqueeze(1).expand(softmax_distribution.shape[0], K, vocab_size).reshape(-1, vocab_size)
+    target = detached_generated_words[:, current_index - K  :current_index].contiguous().view(-1)
+    return criterion(softmax_distribution, target)
+
 
 def bleu_scoring(abstracts, drafts):
     refs = {}
