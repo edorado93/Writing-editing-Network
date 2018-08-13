@@ -103,10 +103,21 @@ function populateAbstract(abstract) {
 
 function loadTopics(topics) {
 
+    document.getElementById("prev-topics").setAttribute("hidden", true);
     displayedTopics = [];
     for(i = 0; i < topics.length; i++) {
         topicsShownToUser.push(topics[i]);
     }
+    populateTopics();
+}
+
+function prevTopics() {
+    if (displayedTopics.length == 76) {
+        displayedTopics = displayedTopics.slice(0, displayedTopics.length - 16);
+    } else{
+        displayedTopics = displayedTopics.slice(0, displayedTopics.length - 20);
+    }
+
     populateTopics();
 }
 
@@ -144,6 +155,11 @@ function populateTopics() {
 
     }
     document.getElementById("submit").removeAttribute("hidden");
+    if (displayedTopics.length > 10) {
+        document.getElementById("prev-topics").removeAttribute("hidden");
+    } else {
+        document.getElementById("prev-topics").setAttribute("hidden", true);
+    }
 
     if (displayedTopics.length == 76) {
         document.getElementById("more-topics").setAttribute("hidden", true);
