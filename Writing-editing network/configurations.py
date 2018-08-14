@@ -21,6 +21,7 @@ class CommonConfig(object):
     pretrained = None
     use_topics = False
     use_labels = False
+    K = 3
 
 class ThreeMostRelevantDataset(CommonConfig):
     relative_data_path = '/data/large-json-three-most-relevant/train.dat'

@@ -113,12 +113,24 @@ def _mask(prev_generated_seq):
         mask = mask.cuda()
     return prev_generated_seq.data.masked_fill_(mask, 0)
 
+def count_repetitions(generated_sequence, K):
+    number_of_words = generated_sequence.shape[1]
+    batch_size = generated_sequence.shape[0]
+    repetitions_in_K_window = 0
+    total_words_in_window = 0
+    for i in range(K, number_of_words):
+        repetitions_in_K_window += torch.sum(generated_sequence[:, i].view(-1,1) == generated_sequence[:, i - K : i]).item()
+        total_words_in_window += (batch_size * K)
+    return repetitions_in_K_window, total_words_in_window
+
 def train_batch(input_variable, input_lengths, target_variable, topics, structure_abstracts, model,
                 teacher_forcing_ratio, is_eval=False):
     loss_list = []
     # Forward propagation
     prev_generated_seq = None
     target_variable_reshaped = target_variable[:, 1:].contiguous().view(-1)
+    repetitions = 0
+    total_words = 0
 
     # Data structures used to store sentences for measuring BLEU scores.
     sentences = []
@@ -137,6 +149,9 @@ def train_batch(input_variable, input_lengths, target_variable, topics, structur
 
         # Current output of the model. This will be the previously generated abstract for the model.
         prev_generated_seq = torch.squeeze(torch.topk(decoder_outputs, 1, dim=2)[1]).view(-1, decoder_outputs.size(1))
+        rep, tot_words = count_repetitions(prev_generated_seq, config.K)
+        repetitions += rep
+        total_words += tot_words
 
         detached_generated_sequence = prev_generated_seq.detach()
         prev_words_CE_loss = 0
@@ -166,7 +181,7 @@ def train_batch(input_variable, input_lengths, target_variable, topics, structur
     if is_eval:
         return loss_list, sentences, drafts
 
-    return loss_list
+    return loss_list, repetitions, total_words
 
 # For current_index = 520, the for loop took 280ms whereas the tensor optimized version took 1.24ms. That's a huge difference.
 def cross_entropy_with_previously_generated_words(current_index, detached_generated_words, softmax_distribution, K):
@@ -228,7 +243,8 @@ def evaluate(validation_dataset, model, teacher_forcing_ratio):
 def train_epoches(start_epoch, dataset, model, n_epochs, teacher_forcing_ratio, prev_epoch_loss_list):
     train_loader = DataLoader(dataset, config.batch_size)
     patience = 0
-    start = time.time()
+    total_repetitions = 0
+    total_generated_words = 0
     for epoch in range(start_epoch, n_epochs + 1):
         if time.time() - start >= 82400:
             print("Exiting with code 99", flush=True)
@@ -248,8 +264,12 @@ def train_epoches(start_epoch, dataset, model, n_epochs, teacher_forcing_ratio, 
             target_variables = data[1]
             input_lengths = data[2]
             # train model
-            loss_list = train_batch(input_variables, input_lengths,
+            loss_list, repetitions, total_words = train_batch(input_variables, input_lengths,
                                target_variables, topics, structure_abstracts, model, teacher_forcing_ratio)
+
+            # Count the number of repetions. Use this to see the effect of diversity promoting objective loss.
+            total_repetitions += repetitions
+            total_generated_words += total_words
             # Record average loss
             num_examples = len(input_variables)
             epoch_examples_total += num_examples
@@ -283,6 +303,7 @@ def train_epoches(start_epoch, dataset, model, n_epochs, teacher_forcing_ratio, 
             writer.add_scalar('eval_scores/ROUGLE_' + str(i), eval_scores[2][i], epoch)
 
         print('****************** | end of epoch {:3d} | time: {:5.2f}s *********************'.format(epoch,  (time.time() - epoch_start_time)))
+        print("Repetitions {}% in a window of {}".format(100 * total_repetitions / total_generated_words, config.K))
         print("Validation Loss: ")
         pprint(validation_loss)
         print("BLEU-4:")
