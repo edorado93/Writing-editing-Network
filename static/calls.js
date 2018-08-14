@@ -1,4 +1,4 @@
-var topicsSelectedCount = 0;
+var topicsSelected = [];
 var topicsShownToUser = [];
 var displayedTopics = [];
 
@@ -10,8 +10,8 @@ function emptyTopics(myNode) {
 
 function getTopics() {
 
-    topicsShownToUser = []
-    topicsSelectedCount = 0
+    topicsShownToUser = [];
+    topicsSelected = [];
 
     URL = window.location.href + "getTopics";
     var title = document.getElementById("title").value;
@@ -31,13 +31,13 @@ function getTopics() {
 
 function selectTopic(e) {
     document.getElementById("alert").setAttribute("hidden", true);
-    element = e.srcElement;
+    var element = e.srcElement;
     if (element.classList.contains("active")) {
         element.classList.remove("active");
-        topicsSelectedCount--;
-    } else if (topicsSelectedCount < 2){
+        topicsSelected.splice(topicsSelected.indexOf(element.innerText), 1);
+    } else if (topicsSelected.length < 2){
         element.classList.add("active");
-        topicsSelectedCount++;
+        topicsSelected.push(element.innerText);
     }
 }
 
@@ -56,7 +56,7 @@ function animate() {
 
 
 function generateAbstracts(e) {
-    if (topicsSelectedCount < 2) {
+    if (topicsSelected.length < 2) {
         document.getElementById("alert").removeAttribute("hidden");
     } else {
 
@@ -74,11 +74,6 @@ function generateAbstracts(e) {
 
       URL = window.location.href + "getAbstracts";
       var title = document.getElementById("title").value;
-      var topics = Array.from(document.getElementsByClassName("list-group-item active"))
-      var active_topics = [];
-      for(i = 0; i < topics.length; i++) {
-          active_topics.push(topics[i].innerHTML);
-      }
       var xmlHttp = new XMLHttpRequest();
       xmlHttp.onreadystatechange = function() {
           if (this.readyState == 4 && this.status == 200) {
@@ -91,7 +86,7 @@ function generateAbstracts(e) {
       xmlHttp.setRequestHeader('Content-Type', 'application/json');
       xmlHttp.send(JSON.stringify({
           "title": title,
-          "topics": active_topics
+          "topics": topicsSelected
         }));
     }
 }
@@ -141,6 +136,11 @@ function populateTopics() {
         entry.onclick = selectTopic;
         entry.appendChild(document.createTextNode(topicsShownToUser[k]));
         entry.classList.add("list-group-item");
+
+        if (topicsSelected.includes(topicsShownToUser[k])) {
+            entry.classList.add("active");
+        }
+
         topics_list.appendChild(entry);
         i++;
 
