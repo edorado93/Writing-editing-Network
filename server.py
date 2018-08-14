@@ -30,11 +30,11 @@ def replace_unknown_words(title_words):
             if word not in general_words:
                 new_title.append(word)
             else:
-                gen_emb = gen_model[word]
+                gen_emb = gen_model[word].reshape(1, -1)
                 cosine = -1
                 replacement = None
                 for science_word in custom_words:
-                    val = cosine_similarity(custom_model[science_word], gen_emb)
+                    val = cosine_similarity(custom_model[science_word].reshape(1, -1), gen_emb)
                     if val > cosine:
                         cosine = val
                         replacement = science_word
@@ -46,7 +46,7 @@ def replace_unknown_words(title_words):
 
 def load_pretrained_ARXIV_embeddings():
     # Loading PreTrained Word Embeddings. Will be used to find out 10 relevant topics
-    filename = "embeddings/complete-512.vec"
+    filename = "embeddings/complete.vec"
     custom_model = KeyedVectors.load_word2vec_format(filename)
     custom_words = set()
     for word in custom_model.vocab:
