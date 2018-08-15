@@ -183,17 +183,18 @@ def train_batch(input_variable, input_lengths, target_variable, topics, structur
             if not is_eval:
                 new_loss.backward(retain_graph=True)
 
-            # If we are in eval mode, obtain words for generated sequences. This will be used for the BLEU score.
-            if is_eval:
-                for p in sliced_sequence:
-                    drafts[i].append(" ".join([str(tok.item()) for tok in p if tok.item() != 0 and tok.item() != 1 and tok.item() != 2]))
-
         for l in range(3):
             loss_list[l][i] /= number_of_slices
 
         if not is_eval:
             torch.nn.utils.clip_grad_norm_(model.parameters(), config.max_grad_norm)
             optimizer.step()
+
+        # If we are in eval mode, obtain words for generated sequences. This will be used for the BLEU score.
+        if is_eval:
+            for p in sequence:
+                drafts[i].append(" ".join([str(tok.item()) for tok in p if tok.item() != 0 and tok.item() != 1 and tok.item() != 2]))
+
         prev_generated_seq = _mask(sequence)
 
     if is_eval:
