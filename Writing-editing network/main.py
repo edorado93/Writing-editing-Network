@@ -130,6 +130,7 @@ def train_batch(input_variable, input_lengths, target_variable, topics, structur
 
     number_of_words = target_variable.shape[1]
     slice_size = 100
+    number_of_slices = number_of_words / slice_size + (number_of_words % slice_size != 0)
     repetitions = 0
     total_words = 0
 
@@ -143,23 +144,19 @@ def train_batch(input_variable, input_lengths, target_variable, topics, structur
     for i in range(config.num_exams):
         sequence = None
         model.zero_grad()
+        decoder_outputs, _, other = \
+            model(input_variable, prev_generated_seq, input_lengths,
+                  target_variable, teacher_forcing_ratio, topics=topics, structure_abstracts=structure_abstracts)
+
+        new_target_variable = target_variable[:, 1:]
         for j in range(0, number_of_words, slice_size):
-            input_var_slice = input_variable[:, j : j + slice_size]
-            input_lengths_slice = input_lengths[:, j : j + slice_size]
-            target_var_slice = target_variable[:, j : j + slice_size]
-            structure_abstracts_slice = structure_abstracts[:, j : j + slice_size] if structure_abstracts is not None else structure_abstracts
-            target_var_slice_reshaped = target_var_slice[:, 1:].contiguous().view(-1)
-            prev_seq_slice = prev_generated_seq[:, j : j + slice_size] if prev_generated_seq is not None else None
-
-            decoder_outputs, _, other = \
-                model(input_var_slice, prev_seq_slice, input_lengths_slice,
-                      target_var_slice, teacher_forcing_ratio, topics=topics, structure_abstracts=structure_abstracts_slice)
-
-            decoder_outputs_reshaped = decoder_outputs.view(-1, vocab_size)
+            target_var_slice_reshaped = new_target_variable[:, j : j + slice_size].contiguous().view(-1)
+            decoder_outputs_slice = decoder_outputs[:, j : j + slice_size, :].contiguous()
+            decoder_outputs_reshaped = decoder_outputs_slice.view(-1, vocab_size)
             lossi = criterion(decoder_outputs_reshaped, target_var_slice_reshaped)
 
             # Current output of the model. This will be the previously generated abstract for the model.
-            sliced_sequence = torch.squeeze(torch.topk(decoder_outputs, 1, dim=2)[1]).view(-1, decoder_outputs.size(1))
+            sliced_sequence = torch.squeeze(torch.topk(decoder_outputs_slice, 1, dim=2)[1]).view(-1, decoder_outputs_slice.size(1))
             sequence = torch.cat((sequence, sliced_sequence), dim=1) if sequence is not None else sliced_sequence
             rep, tot_words = count_repetitions(sliced_sequence, config.K)
             repetitions += rep
@@ -168,10 +165,11 @@ def train_batch(input_variable, input_lengths, target_variable, topics, structur
             # Cross Entropy with previous words error computation.
             detached_generated_sequence = sliced_sequence.detach()
             prev_words_CE_loss = 0
-            number_of_words_in_slice = decoder_outputs.shape[1]
+            number_of_words_in_slice = decoder_outputs_slice.shape[1]
+            #TODO: Second slice onwards this should start from 0 and not K
             for k in range(config.K, number_of_words_in_slice):
                 prev_words_CE_loss += cross_entropy_with_previously_generated_words(k, detached_generated_sequence,
-                                                                                    decoder_outputs[:, k, :], config.K)
+                                                                                    decoder_outputs_slice[:, k, :], config.K)
 
             # We want to maximise the cross entropy of each word with the previous words being considered as ground truth. Hence, we subtract.
             ce_loss = prev_words_CE_loss / (number_of_words_in_slice - config.K)
@@ -183,14 +181,17 @@ def train_batch(input_variable, input_lengths, target_variable, topics, structur
             loss_list[2][i] += new_loss.item()
 
             if not is_eval:
-                lossi.backward(retain_graph=True)
+                new_loss.backward(retain_graph=True)
 
             # If we are in eval mode, obtain words for generated sequences. This will be used for the BLEU score.
             if is_eval:
                 for p in sliced_sequence:
                     drafts[i].append(" ".join([str(tok.item()) for tok in p if tok.item() != 0 and tok.item() != 1 and tok.item() != 2]))
 
-        if not eval:
+        for l in range(3):
+            loss_list[l][i] /= number_of_slices
+
+        if not is_eval:
             torch.nn.utils.clip_grad_norm_(model.parameters(), config.max_grad_norm)
             optimizer.step()
         prev_generated_seq = _mask(sequence)
@@ -263,8 +264,9 @@ def train_epoches(start_epoch, dataset, model, n_epochs, teacher_forcing_ratio, 
     patience = 0
     total_repetitions = 0
     total_generated_words = 0
+    break_time = time.time()
     for epoch in range(start_epoch, n_epochs + 1):
-        if time.time() - start >= 82400:
+        if time.time() - break_time >= 82400:
             print("Exiting with code 99", flush=True)
             exit(99)
         model.train(True)
