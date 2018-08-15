@@ -330,8 +330,9 @@ def train_epoches(start_epoch, dataset, model, n_epochs, teacher_forcing_ratio, 
 
         print('****************** | end of epoch {:3d} | time: {:5.2f}s *********************'.format(epoch,  (time.time() - epoch_start_time)))
         print("Repetitions {}% in a window of {}".format(100 * total_repetitions / total_generated_words, config.K))
-        print("Validation Loss: ")
-        pprint(validation_loss)
+        print("Validation Loss: Original", validation_loss[0][-1])
+        print("Validation Loss: Cross Entropy", validation_loss[1][-1])
+        print("Validation Loss: Subtracted", validation_loss[2][-1])
         print("BLEU-4:")
         pprint(eval_scores[0])
         print("METEOR:")
