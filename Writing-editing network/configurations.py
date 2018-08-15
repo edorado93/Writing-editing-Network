@@ -22,6 +22,7 @@ class CommonConfig(object):
     use_topics = False
     use_labels = False
     K = 3
+    cross_entropy_weight = 0
 
 class ThreeMostRelevantDataset(CommonConfig):
     relative_data_path = '/data/large-json-three-most-relevant/train.dat'

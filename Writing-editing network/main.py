@@ -128,7 +128,9 @@ def train_batch(input_variable, input_lengths, target_variable, topics, structur
     loss_list = []
     # Forward propagation
     prev_generated_seq = None
-    target_variable_reshaped = target_variable[:, 1:].contiguous().view(-1)
+
+    number_of_words = target_variable.shape[1]
+    slice_size = 100
     repetitions = 0
     total_words = 0
 
@@ -140,50 +142,56 @@ def train_batch(input_variable, input_lengths, target_variable, topics, structur
         sentences.append(" ".join([str(tok.item()) for tok in t if tok.item() != 0 and tok.item() != 1 and tok.item() != 2]))
 
     for i in range(config.num_exams):
-        decoder_outputs, _, other = \
-            model(input_variable, prev_generated_seq, input_lengths,
-                   target_variable, teacher_forcing_ratio, topics=topics, structure_abstracts=structure_abstracts)
+        sequence = None
+        model.zero_grad()
+        for j in range(0, number_of_words, slice_size):
+            input_var_slice = input_variable[:, j : j + slice_size]
+            input_lengths_slice = input_lengths[:, j : j + slice_size]
+            target_var_slice = target_variable[:, j : j + slice_size]
+            structure_abstracts_slice = structure_abstracts[:, j : j + slice_size] if structure_abstracts is not None else structure_abstracts
+            target_var_slice_reshaped = target_var_slice[:, 1:].contiguous().view(-1)
+            prev_seq_slice = prev_generated_seq[:, j : j + slice_size] if prev_generated_seq is not None else None
 
-        decoder_outputs_reshaped = decoder_outputs.view(-1, vocab_size)
-        lossi = criterion(decoder_outputs_reshaped, target_variable_reshaped)
+            decoder_outputs, _, other = \
+                model(input_var_slice, prev_seq_slice, input_lengths_slice,
+                      target_var_slice, teacher_forcing_ratio, topics=topics, structure_abstracts=structure_abstracts_slice)
 
-        # Current output of the model. This will be the previously generated abstract for the model.
-        prev_generated_seq = torch.squeeze(torch.topk(decoder_outputs, 1, dim=2)[1]).view(-1, decoder_outputs.size(1))
-        rep, tot_words = count_repetitions(prev_generated_seq, config.K)
-        repetitions += rep
-        total_words += tot_words
+            decoder_outputs_reshaped = decoder_outputs.view(-1, vocab_size)
+            lossi = criterion(decoder_outputs_reshaped, target_var_slice_reshaped)
 
-        detached_generated_sequence = prev_generated_seq.detach()
-        prev_words_CE_loss = 0
-        number_of_words_in_each_abstract = decoder_outputs.shape[1]
-        K = 3
-        j = 0
-        for i in range(K, number_of_words_in_each_abstract, K):
-            prev_words_CE_loss += cross_entropy_with_previously_generated_words(i, detached_generated_sequence, decoder_outputs[:,i,:], K)
-            j += 1
+            # Current output of the model. This will be the previously generated abstract for the model.
+            sliced_sequence = torch.squeeze(torch.topk(decoder_outputs, 1, dim=2)[1]).view(-1, decoder_outputs.size(1))
+            sequence = torch.cat((sequence, sliced_sequence), dim=1) if sequence is not None else sliced_sequence
+            rep, tot_words = count_repetitions(sliced_sequence, config.K)
+            repetitions += rep
+            total_words += tot_words
+            # loss_list.append(lossi.item())
+            if not is_eval:
+                detached_generated_sequence = sliced_sequence.detach()
+                prev_words_CE_loss = 0
+                number_of_words_in_slice = decoder_outputs.shape[1]
+                for k in range(config.K, number_of_words_in_slice):
+                    prev_words_CE_loss += cross_entropy_with_previously_generated_words(k, detached_generated_sequence, decoder_outputs[:, k, :], config.K)
 
-        # We want to maximise the cross entropy of each word with the previous words being considered as ground truth. Hence, we subtract.
-        lossi = lossi - (prev_words_CE_loss / j)
+                # We want to maximise the cross entropy of each word with the previous words being considered as ground truth. Hence, we subtract.
+                lossi = lossi - config.cross_entropy_weight * (prev_words_CE_loss / (number_of_words_in_slice - config.K))
+                lossi.backward(retain_graph=True)
 
-        loss_list.append(lossi.item())
-        if not is_eval:
-            model.zero_grad()
-            lossi.backward(retain_graph=True)
+            # If we are in eval mode, obtain words for generated sequences. This will be used for the BLEU score.
+            if is_eval:
+                for p in sliced_sequence:
+                    drafts[i].append(" ".join([str(tok.item()) for tok in p if tok.item() != 0 and tok.item() != 1 and tok.item() != 2]))
+
+        if not eval:
             torch.nn.utils.clip_grad_norm_(model.parameters(), config.max_grad_norm)
             optimizer.step()
-
-        # If we are in eval mode, obtain words for generated sequences. This will be used for the BLEU score.
-        if is_eval:
-            for p in prev_generated_seq:
-                drafts[i].append(" ".join([str(tok.item()) for tok in p if tok.item() != 0 and tok.item() != 1 and tok.item() != 2]))
-        prev_generated_seq = _mask(prev_generated_seq)
+        prev_generated_seq = _mask(sequence)
 
     if is_eval:
         return loss_list, sentences, drafts
 
     return loss_list, repetitions, total_words
 
-# For current_index = 520, the for loop took 280ms whereas the tensor optimized version took 1.24ms. That's a huge difference.
 def cross_entropy_with_previously_generated_words(current_index, detached_generated_words, softmax_distribution, K):
     softmax_distribution = softmax_distribution.unsqueeze(1).expand(softmax_distribution.shape[0], K, vocab_size).reshape(-1, vocab_size)
     target = detached_generated_words[:, current_index - K  :current_index].contiguous().view(-1)
