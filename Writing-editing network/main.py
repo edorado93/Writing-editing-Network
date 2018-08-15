@@ -125,8 +125,7 @@ def count_repetitions(generated_sequence, K):
 
 def train_batch(input_variable, input_lengths, target_variable, topics, structure_abstracts, model,
                 teacher_forcing_ratio, is_eval=False):
-    loss_list = []
-    # Forward propagation
+    loss_list = [[0 for _ in range(config.num_exams)] for _ in range(3)]
     prev_generated_seq = None
 
     number_of_words = target_variable.shape[1]
@@ -165,16 +164,25 @@ def train_batch(input_variable, input_lengths, target_variable, topics, structur
             rep, tot_words = count_repetitions(sliced_sequence, config.K)
             repetitions += rep
             total_words += tot_words
-            # loss_list.append(lossi.item())
-            if not is_eval:
-                detached_generated_sequence = sliced_sequence.detach()
-                prev_words_CE_loss = 0
-                number_of_words_in_slice = decoder_outputs.shape[1]
-                for k in range(config.K, number_of_words_in_slice):
-                    prev_words_CE_loss += cross_entropy_with_previously_generated_words(k, detached_generated_sequence, decoder_outputs[:, k, :], config.K)
 
-                # We want to maximise the cross entropy of each word with the previous words being considered as ground truth. Hence, we subtract.
-                lossi = lossi - config.cross_entropy_weight * (prev_words_CE_loss / (number_of_words_in_slice - config.K))
+            # Cross Entropy with previous words error computation.
+            detached_generated_sequence = sliced_sequence.detach()
+            prev_words_CE_loss = 0
+            number_of_words_in_slice = decoder_outputs.shape[1]
+            for k in range(config.K, number_of_words_in_slice):
+                prev_words_CE_loss += cross_entropy_with_previously_generated_words(k, detached_generated_sequence,
+                                                                                    decoder_outputs[:, k, :], config.K)
+
+            # We want to maximise the cross entropy of each word with the previous words being considered as ground truth. Hence, we subtract.
+            ce_loss = prev_words_CE_loss / (number_of_words_in_slice - config.K)
+            new_loss = lossi - config.cross_entropy_weight * ce_loss
+
+            # Track all 3 losses for plotting
+            loss_list[0][i] += lossi.item()
+            loss_list[1][i] += ce_loss.item()
+            loss_list[2][i] += new_loss.item()
+
+            if not is_eval:
                 lossi.backward(retain_graph=True)
 
             # If we are in eval mode, obtain words for generated sequences. This will be used for the BLEU score.
@@ -224,7 +232,7 @@ def bleu_scoring(abstracts, drafts):
 def evaluate(validation_dataset, model, teacher_forcing_ratio):
     validation_loader = DataLoader(validation_dataset, config.validation_batch_size)
     model.eval()
-    epoch_loss_list = [0] * config.num_exams
+    epoch_loss_list = [[0 for _ in range(config.num_exams)] for _ in range(3)]
     abstracts = []
     drafts = [[] for _ in range(config.num_exams)]
     for batch_idx, data in enumerate(validation_loader):
@@ -240,12 +248,14 @@ def evaluate(validation_dataset, model, teacher_forcing_ratio):
         num_examples = len(input_variables)
         abstracts.extend(batch_sentences)
         for i in range(config.num_exams):
-            epoch_loss_list[i] += loss_list[i] * num_examples
+            for l in range(3):
+                epoch_loss_list[l][i] += loss_list[l][i] * num_examples
             drafts[i].extend(batch_drafts[i])
 
     scores = bleu_scoring(abstracts, drafts)
     for i in range(config.num_exams):
-        epoch_loss_list[i] /= float(len(validation_loader.dataset))
+        for l in range(3):
+            epoch_loss_list[l][i] /= float(len(validation_loader.dataset))
     return epoch_loss_list, scores
 
 def train_epoches(start_epoch, dataset, model, n_epochs, teacher_forcing_ratio, prev_epoch_loss_list):
@@ -262,8 +272,8 @@ def train_epoches(start_epoch, dataset, model, n_epochs, teacher_forcing_ratio, 
         total_examples = 0
         start = time.time()
         epoch_start_time = start
-        total_loss = 0
-        training_loss_list = [0] * config.num_exams
+        total_loss = [0 for _ in range(3)]
+        training_loss_list = [[0 for _ in range(config.num_exams)] for _ in range(3)]
         for batch_idx, data in enumerate(train_loader):
             topics = data[3] if config.use_topics else None
             structure_abstracts = (data[4] if config.use_topics else data[3]) if config.use_labels else None
@@ -282,30 +292,35 @@ def train_epoches(start_epoch, dataset, model, n_epochs, teacher_forcing_ratio, 
             num_examples = len(input_variables)
             epoch_examples_total += num_examples
             for i in range(config.num_exams):
-                training_loss_list[i] += loss_list[i] * num_examples
+                for l in range(3):
+                    training_loss_list[l][i] += loss_list[l][i] * num_examples
 
             # Add to local variable for logging
-            total_loss += loss_list[-1] * num_examples
+            for l in range(3):
+                total_loss[l] += loss_list[l][-1] * num_examples
             total_examples += num_examples
             if total_examples % config.log_interval == 0:
-                cur_loss = total_loss / float(config.log_interval)
+                cur_loss = []
+                for l in range(3):
+                    cur_loss.append(total_loss[l] / float(config.log_interval))
                 end_time = time.time()
                 elapsed = end_time - start
                 start = end_time
-                total_loss = 0
+                total_loss = [0 for _ in range(3)]
                 print('| epoch {:3d} | {:5d}/{:5d} examples | lr {:02.4f} | ms/batch {:5.2f} | '
-                      'loss {:5.2f}'.format(
+                      'original_loss {:5.2f}, ce_loss {:5.2f}, subtracted_loss {:5.2f}'.format(
                     epoch, total_examples, len(train_loader.dataset), optimizer.param_groups[0]['lr'],
-                                           elapsed * 1000 / config.log_interval, cur_loss),
+                                           elapsed * 1000 / config.log_interval, cur_loss[0], cur_loss[1], cur_loss[2]),
                     flush=True)
 
         validation_loss, eval_scores = evaluate(validation_abstracts, model, teacher_forcing_ratio)
         if config.use_topics:
             plot_topical_encoding(vectorizer.context_vectorizer, model.context_encoder.embedding, writer, epoch)
         for i in range(config.num_exams):
-            training_loss_list[i] /= float(epoch_examples_total)
-            writer.add_scalar('loss/train/train_loss_abstract_'+str(i), training_loss_list[i], epoch)
-            writer.add_scalar('loss/valid/validation_loss_abstract_' + str(i), validation_loss[i], epoch)
+            for l in range(3):
+                training_loss_list[l][i] /= float(epoch_examples_total)
+                writer.add_scalar('loss/train/' + str(l) + '_train_loss_abstract_'+str(i), training_loss_list[l][i], epoch)
+                writer.add_scalar('loss/valid/' + str(l) + '_validation_loss_abstract_' + str(i), validation_loss[l][i], epoch)
             writer.add_scalar('eval_scores/BLEU_' + str(i), eval_scores[0][i], epoch)
             writer.add_scalar('eval_scores/METEOR_' + str(i), eval_scores[1][i], epoch)
             writer.add_scalar('eval_scores/ROUGLE_' + str(i), eval_scores[2][i], epoch)
