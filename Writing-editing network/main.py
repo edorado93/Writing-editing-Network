@@ -205,9 +205,8 @@ def evaluate(validation_dataset, model, teacher_forcing_ratio):
         epoch_loss_list[i] /= float(len(validation_loader.dataset))
     return epoch_loss_list, scores
 
-def train_epoches(start_epoch, dataset, model, n_epochs, teacher_forcing_ratio):
+def train_epoches(start_epoch, dataset, model, n_epochs, teacher_forcing_ratio, prev_epoch_loss_list):
     train_loader = DataLoader(dataset, config.batch_size)
-    prev_epoch_loss_list = [0.] * config.num_exams
     patience = 0
     start = time.time()
     for epoch in range(start_epoch, n_epochs + 1):
@@ -280,37 +279,41 @@ def train_epoches(start_epoch, dataset, model, n_epochs, teacher_forcing_ratio):
                 print("Breaking off now. Performance has not improved on validation set since the last",config.patience,"epochs")
                 break
         else:
-            save_model(epoch)
-            print("Saved best model till now!")
             patience = 0
             prev_epoch_loss_list = eval_scores[0][:]
+            save_model(epoch, prev_epoch_loss_list)
+            print("Saved best model till now!")
 
-def save_model(epoch):
+def save_model(epoch, prev_epoch_loss_list):
     state = {'epoch': epoch + 1, 'state_dict': model.state_dict(),
-             'optimizer': optimizer.state_dict()}
+             'optimizer': optimizer.state_dict(), 'best_eval_scores': prev_epoch_loss_list}
     torch.save(state, args.save)
 
 def load_checkpoint():
     start_epoch = 0
+    prev_epoch_loss_list = [0.] * config.num_exams
     if os.path.isfile(args.save):
         print("=> loading checkpoint '{}'".format(args.save))
         checkpoint = torch.load(args.save)
         start_epoch = checkpoint['epoch']
         model.load_state_dict(checkpoint['state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer'])
-        print("=> loaded checkpoint '{}' (epoch {})"
-              .format(args.save, checkpoint['epoch']))
+        # Only for older models trained without this
+        if 'best_eval_scores' in checkpoint:
+            prev_epoch_loss_list = checkpoint['best_eval_scores']
+        print("=> loaded checkpoint '{}' (epoch {}) best_eval_scores {}"
+              .format(args.save, checkpoint['epoch'], prev_epoch_loss_list))
     else:
         print("=> no checkpoint found at '{}', starting from scratch".format(args.save))
 
-    return start_epoch
+    return start_epoch, prev_epoch_loss_list
 
 if __name__ == "__main__":
     if args.mode == 0:
         # train
         try:
-            start_epoch = load_checkpoint()
-            train_epoches(start_epoch, abstracts, model, config.epochs, teacher_forcing_ratio=1)
+            start_epoch, prev_epoch_loss_list = load_checkpoint()
+            train_epoches(start_epoch, abstracts, model, config.epochs, teacher_forcing_ratio=1, prev_epoch_loss_list=prev_epoch_loss_list)
         except KeyboardInterrupt:
             print('-' * 89)
             print('Exiting from training early')
