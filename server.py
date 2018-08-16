@@ -1,45 +1,32 @@
 import sys
-import torch.nn as nn
 import torch
-from torch.backends import cudnn
 from flask import Flask, render_template, request, jsonify
 from gensim.models import KeyedVectors
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 sys.path.insert(0, "network/")
-from time import  sleep
 from network.predictor import Predictor
-from network import configurations
+import ast
 
-testing_mode = True
+testing_mode = False
+should_replace_unknowns = False
 test_topics = ["Topic"+str(i+1) for i in range(76)]
 
-def unknown_word_embeddings():
-    filename = "embeddings/wiki-news-300d-1M.vec"
-    gen_model = KeyedVectors.load_word2vec_format(filename)
-    pretrained_words = set()
-    for word in gen_model.vocab:
-        pretrained_words.add(word)
-    return pretrained_words, gen_model
+def load_unknown_word_matches():
+    with open("unknown_word_matches.txt") as f:
+        matchings = f.readline()
+        ast.literal_eval(matchings)
+        return matchings
 
 def replace_unknown_words(title_words):
     new_title = []
-    print(title_words)
     for word in title_words:
         if word not in custom_words:
-            if word not in general_words:
+            if word not in unknown_matchings and word.lower() not in unknown_matchings:
                 new_title.append(word)
             else:
-                gen_emb = gen_model[word].reshape(1, -1)
-                cosine = -1
-                replacement = None
-                for science_word in custom_words:
-                    val = cosine_similarity(custom_model[science_word].reshape(1, -1), gen_emb)
-                    if val > cosine:
-                        cosine = val
-                        replacement = science_word
-                print("Replaced {} with {}".format(word, replacement))
-                new_title.append(replacement)
+                science_matching_word = unknown_matchings[word] if word in unknown_matchings else unknown_matchings[word.lower()]
+                new_title.append(science_matching_word)
         else:
             new_title.append(word)
     return new_title
@@ -103,8 +90,9 @@ if not testing_mode:
     # Load the predictor object that shall be used for generation.
     predictor = Predictor(model, vectorizer, use_cuda=use_cuda)
 
-    # Load fastText pretrained word embeedings for unknown word replacements.
-    general_words, gen_model = unknown_word_embeddings()
+    # Load unknown precomputed word matches. For every word in the fastText general model of 1 mil words
+    # we have the closest matching word form our own vocab.
+    unknown_matchings = load_unknown_word_matches()
 
     # Load set of words and their embeddings in our pretrained WE.
     custom_words, custom_model = load_pretrained_ARXIV_embeddings()
@@ -123,6 +111,8 @@ app = Flask(__name__)
 def get_topics():
     data = request.get_json()
     title_entered_by_user = data["title"]
+    if should_replace_unknowns:
+        title_entered_by_user = replace_unknown_words(title_entered_by_user)
     topics = get_topics_according_to_relevance(title_entered_by_user) if not testing_mode else test_topics
     return jsonify({"topics": topics})
 
@@ -132,8 +122,9 @@ def get_abstract():
     title_entered_by_user = data["title"]
     topics_entered = data["topics"]
     seq = title_entered_by_user.strip().split(' ')
-    seq = replace_unknown_words(seq)
-    print("New title", seq)
+    if should_replace_unknowns:
+        seq = replace_unknown_words(seq)
+        print("New title", seq)
     topics = vectorizer.topics_to_index_tensor(topics_entered)
     num_exams = 2
     max_length = 200
