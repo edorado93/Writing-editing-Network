@@ -6,17 +6,18 @@ from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 sys.path.insert(0, "network/")
 from network.predictor import Predictor
-import ast
 
 testing_mode = False
 should_replace_unknowns = False
 test_topics = ["Topic"+str(i+1) for i in range(76)]
 
 def load_unknown_word_matches():
+    matchings = {}
     with open("unknown_word_matches.txt") as f:
-        matchings = f.readline()
-        ast.literal_eval(matchings)
-        return matchings
+        for line in f:
+            key, val = line.strip().split()
+            matchings[key] = val
+    return matchings
 
 def replace_unknown_words(title_words):
     new_title = []
@@ -92,7 +93,10 @@ if not testing_mode:
 
     # Load unknown precomputed word matches. For every word in the fastText general model of 1 mil words
     # we have the closest matching word form our own vocab.
-    unknown_matchings = load_unknown_word_matches()
+    unknown_matchings = {}
+    if should_replace_unknowns:
+        unknown_matchings = load_unknown_word_matches()
+        print("Loaded unknown word mappings: ",len(unknown_matchings))
 
     # Load set of words and their embeddings in our pretrained WE.
     custom_words, custom_model = load_pretrained_ARXIV_embeddings()
