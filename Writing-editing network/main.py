@@ -162,9 +162,11 @@ def train_batch(input_variable, input_lengths, target_variable, topics, structur
             # Current output of the model. This will be the previously generated abstract for the model.
             sliced_sequence = torch.squeeze(torch.topk(decoder_outputs_slice, 1, dim=2)[1]).view(-1, decoder_outputs_slice.size(1))
             sequence = torch.cat((sequence, sliced_sequence), dim=1) if sequence is not None else sliced_sequence
-            rep, tot_words = count_repetitions(sliced_sequence, config.K)
-            repetitions += rep
-            total_words += tot_words
+
+            if i  == 1:
+                rep, tot_words = count_repetitions(sliced_sequence, config.K)
+                repetitions += rep
+                total_words += tot_words
 
             # Cross Entropy with previous words error computation.
             detached_generated_sequence = sliced_sequence.detach()
