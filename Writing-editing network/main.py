@@ -114,13 +114,17 @@ def _mask(prev_generated_seq):
     return prev_generated_seq.data.masked_fill_(mask, 0)
 
 def count_repetitions(generated_sequence, K):
+    eos_id = 1
     number_of_words = generated_sequence.shape[1]
     batch_size = generated_sequence.shape[0]
     repetitions_in_K_window = 0
     total_words_in_window = 0
-    for i in range(K, number_of_words):
-        repetitions_in_K_window += torch.sum(generated_sequence[:, i].view(-1,1) == generated_sequence[:, i - K : i]).item()
-        total_words_in_window += (batch_size * K)
+    for j in range(batch_size):
+        for i in range(K, number_of_words):
+            if generated_sequence[j][i].item() == eos_id:
+                break
+            repetitions_in_K_window += torch.sum(generated_sequence[j, i].view(-1,1) == generated_sequence[j, i - K : i]).item()
+            total_words_in_window += K
     return repetitions_in_K_window, total_words_in_window
 
 def train_batch(input_variable, input_lengths, target_variable, topics, structure_abstracts, model,
