@@ -4,10 +4,10 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 import torch.optim as optim
 from torch.backends import cudnn
-from utils import Vectorizer, headline2abstractdataset, load_embeddings, plot_topical_encoding
+from utils import Vectorizer, headline2abstractdataset, load_embeddings
 from predictor import Predictor
-from model_manager import ModelManager
-from stat_manager import StatManager, AverageMeter
+from seq2seq.model_manager import ModelManager
+from seq2seq.stat_manager import StatManager, AverageMeter
 from pprint import pprint
 import os.path
 sys.path.insert(0,'..')
@@ -31,7 +31,7 @@ model = manager.get_model()
 validation_abstracts = manager.get_validation_data()
 training_abstracts = manager.get_training_data()
 
-stat_manager = StatManager(is_testing=False)
+stat_manager = StatManager(config, is_testing=False)
 
 optimizer = optim.Adam(model.parameters(), lr=config.lr)
 criterion = nn.CrossEntropyLoss(ignore_index=0)
@@ -145,7 +145,7 @@ def evaluate(validation_dataset, model, teacher_forcing_ratio):
                                 target_variables, topics, structure_abstracts, model, teacher_forcing_ratio=teacher_forcing_ratio, is_eval=True)
 
         # Updayte average validation loss
-        validation_loss.update(loss_list[1].item(), input_variables.size(0))
+        validation_loss.update(loss_list[1], input_variables.size(0))
 
         abstracts.extend(batch_sentences)
         for i in range(config.num_exams):
@@ -219,6 +219,7 @@ def train_epoches(start_epoch, dataset, model, n_epochs, teacher_forcing_ratio, 
             prev_epoch_loss_list = eval_scores[0][:]
             save_model(epoch, prev_epoch_loss_list)
             print("Saved best model till now!")
+        print("")
 
 def save_model(epoch, prev_epoch_loss_list):
     state = {'epoch': epoch + 1, 'state_dict': model.state_dict(),

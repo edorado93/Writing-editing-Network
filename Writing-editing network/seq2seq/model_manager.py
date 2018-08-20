@@ -1,6 +1,6 @@
 import configurations
 from eval import Evaluate
-from utils import Vectorizer, headline2abstractdataset, load_embeddings, plot_topical_encoding
+from utils import Vectorizer, headline2abstractdataset, load_embeddings
 from seq2seq.fb_seq2seq import FbSeq2seq
 from seq2seq.EncoderRNN import EncoderRNN
 from seq2seq.DecoderRNNFB import DecoderRNNFB
