@@ -10,7 +10,7 @@ class CommonConfig(object):
     max_grad_norm = 10
     min_freq = 5
     num_exams = 3
-    log_interval = 1000
+    log_interval = 50
     patience = 5
 
     #Common Configuration that is usually played with.
