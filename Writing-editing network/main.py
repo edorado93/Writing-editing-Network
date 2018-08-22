@@ -2,12 +2,14 @@ import time, argparse, os, sys, pickle
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
+from torch.utils.data.distributed import DistributedSampler
 import torch.optim as optim
 from torch.backends import cudnn
 from utils import Vectorizer, headline2abstractdataset, load_embeddings
 from predictor import Predictor
 from seq2seq.model_manager import ModelManager
 from seq2seq.stat_manager import StatManager, AverageMeter
+from seq2seq.distributed_sequential_sampler import DistributedSequentialSampler
 from pprint import pprint
 import os.path
 sys.path.insert(0,'..')
@@ -23,6 +25,8 @@ parser.add_argument('--mode', type=int,  default=0,
                     help='train(0)/predict_sentence(1)/predict_file(2) or evaluate(3)')
 parser.add_argument('--conf', type=str,
                     help="configuration to load for the training")
+parser.add_argument("--local_rank", type=int, default=0,
+                    help="The local rank of the process provided by the distributed launch utility, if being used")
 args = parser.parse_args()
 
 manager = ModelManager(args)
@@ -30,18 +34,22 @@ config = manager.get_config()
 model = manager.get_model()
 validation_abstracts = manager.get_validation_data()
 training_abstracts = manager.get_training_data()
+train_sampler = None
 
 stat_manager = StatManager(config, is_testing=False)
 
 optimizer = optim.Adam(model.parameters(), lr=config.lr)
 criterion = nn.CrossEntropyLoss(ignore_index=0)
 if args.cuda:
+    torch.cuda.set_device(args.local_rank)
     model = model.cuda()
     criterion = criterion.cuda()
 
 if config.dataparallel and torch.cuda.device_count() > 1:
-    print("Let's use", torch.cuda.device_count(), "GPUs!")
-    model = nn.DataParallel(model)
+    torch.distributed.init_process_group(backend='nccl', init_method='env://')
+    model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank], output_device=args.local_rank)
+    train_sampler = DistributedSequentialSampler(training_abstracts)
+    config.batch_size //= torch.cuda.device_count()
 
 # Mask variable
 def _mask(prev_generated_seq):
@@ -155,7 +163,7 @@ def evaluate(validation_dataset, model, teacher_forcing_ratio):
     return validation_loss, scores
 
 def train_epoches(start_epoch, dataset, model, n_epochs, teacher_forcing_ratio, prev_epoch_loss_list):
-    train_loader = DataLoader(dataset, config.batch_size)
+    train_loader = DataLoader(dataset, config.batch_size, sampler=train_sampler)
     patience = 0
     cutoff_time_start = time.time()
     for epoch in range(start_epoch, n_epochs + 1):
@@ -194,32 +202,33 @@ def train_epoches(start_epoch, dataset, model, n_epochs, teacher_forcing_ratio, 
 
             # Log after a fixed interval
             if batch_idx % config.log_interval == 0:
-                print('| epoch {:3d} | {:5d}/{:5d} examples | lr {:02.4f} | ms/batch {:5.2f} | '
-                      'loss {:5.2f}'.format(epoch, batch_idx * config.batch_size, len(train_loader.dataset), optimizer.param_groups[0]['lr'],
+                print('PID_{} | epoch {:3d} | {:5d}/{:5d} examples | lr {:02.4f} | ms/batch {:5.2f} | '
+                      'loss {:5.2f}'.format(args.local_rank, epoch, batch_idx * config.batch_size, len(train_sampler) if train_sampler else len(train_loader.dataset), optimizer.param_groups[0]['lr'],
                                            batch_time.avg * 1000, training_loss.avg), flush=True)
 
-        validation_loss, eval_scores = evaluate(validation_abstracts, model, teacher_forcing_ratio)
+        if args.local_rank == 0:
+            validation_loss, eval_scores = evaluate(validation_abstracts, model, teacher_forcing_ratio)
 
-        stat_manager.log_original_training_loss(training_loss.avg, epoch)
-        stat_manager.log_original_validation_loss(validation_loss.avg, epoch)
+            stat_manager.log_original_training_loss(training_loss.avg, epoch)
+            stat_manager.log_original_validation_loss(validation_loss.avg, epoch)
 
 
-        print('****************** | end of epoch {:3d} | time: {:5.2f}s *********************'.format(epoch,  (time.time() - epoch_start_time)))
-        print("Validation Loss: {}, BLEU-4: {}, METEOR: {}, ROUGLE-L: {}".format(validation_loss.avg, eval_scores[0][1],
-                                                                                 eval_scores[1][1], eval_scores[2][1]))
+            print('PID_{} ****************** | end of epoch {:3d} | time: {:5.2f}s *********************'.format(args.local_rank, epoch,  (time.time() - epoch_start_time)))
+            print("PID_{} Validation Loss: {}, BLEU-4: {}, METEOR: {}, ROUGLE-L: {}".format(args.local_rank, validation_loss.avg, eval_scores[0][1],
+                                                                                     eval_scores[1][1], eval_scores[2][1]))
 
-        # Use BLEU score as yardstick for early stopping rather than the validation loss.
-        if prev_epoch_loss_list[1] > eval_scores[0][1]:
-            patience += 1
-            if patience == config.patience:
-                print("Breaking off now. Performance has not improved on validation set since the last",config.patience,"epochs")
-                break
-        else:
-            patience = 0
-            prev_epoch_loss_list = eval_scores[0][:]
-            save_model(epoch, prev_epoch_loss_list)
-            print("Saved best model till now!")
-        print("")
+            # Use BLEU score as yardstick for early stopping rather than the validation loss.
+            if prev_epoch_loss_list[1] > eval_scores[0][1]:
+                patience += 1
+                if patience == config.patience:
+                    print("Breaking off now. Performance has not improved on validation set since the last",config.patience,"epochs")
+                    break
+            else:
+                patience = 0
+                prev_epoch_loss_list = eval_scores[0][:]
+                save_model(epoch, prev_epoch_loss_list)
+                print("Saved best model till now!")
+            print("")
 
 def save_model(epoch, prev_epoch_loss_list):
     state = {'epoch': epoch + 1, 'state_dict': model.state_dict(),
