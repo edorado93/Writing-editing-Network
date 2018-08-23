@@ -132,7 +132,7 @@ def train_batch(input_variable, input_lengths, target_variable, topics, structur
             #TODO: Second slice onwards this should start from 0 and not K
             for k in range(config.K, number_of_words_in_slice):
                 prev_words_CE_loss += cross_entropy_with_previously_generated_words(k, detached_generated_sequence,
-                                                                                    decoder_outputs_slice[:, k, :], config.K)
+                                                                                    decoder_outputs_slice[:, k, :], config.K, vocab_size)
 
             # We want to maximise the cross entropy of each word with the previous words being considered as ground truth. Hence, we subtract.
             ce_loss = prev_words_CE_loss / (number_of_words_in_slice - config.K)
@@ -165,7 +165,7 @@ def train_batch(input_variable, input_lengths, target_variable, topics, structur
 
     return loss_list, repetitions, total_words
 
-def cross_entropy_with_previously_generated_words(current_index, detached_generated_words, softmax_distribution, K):
+def cross_entropy_with_previously_generated_words(current_index, detached_generated_words, softmax_distribution, K, vocab_size):
     softmax_distribution = softmax_distribution.unsqueeze(1).expand(softmax_distribution.shape[0], K, vocab_size).reshape(-1, vocab_size)
     target = detached_generated_words[:, current_index - K  :current_index].contiguous().view(-1)
     return criterion(softmax_distribution, target)
@@ -269,18 +269,22 @@ def train_epoches(start_epoch, dataset, model, n_epochs, teacher_forcing_ratio, 
             # Log after a fixed interval
             if batch_idx % config.log_interval == 0:
                 print('PID_{} | epoch {:3d} | {:5d}/{:5d} examples | lr {:02.4f} | ms/batch {:5.2f} | '
-                      'loss {:5.2f}'.format(args.local_rank, epoch, batch_idx * config.batch_size, len(train_sampler) if train_sampler else len(train_loader.dataset), optimizer.param_groups[0]['lr'],
-                                           batch_time.avg * 1000, training_loss.avg), flush=True)
+                      'Original Loss {:5.2f}, CE Loss {:5.2f}, Subtracted Loss {:5.2f}'.format(args.local_rank, epoch, batch_idx * config.batch_size, len(train_sampler) if train_sampler else len(train_loader.dataset), optimizer.param_groups[0]['lr'],
+                                           batch_time.avg * 1000, training_loss[0].avg, training_loss[1].avg, training_loss[2].avg), flush=True)
 
         if args.local_rank == 0:
             validation_loss, eval_scores = evaluate(validation_abstracts, model, teacher_forcing_ratio)
 
-            stat_manager.log_original_training_loss(training_loss.avg, epoch)
-            stat_manager.log_original_validation_loss(validation_loss.avg, epoch)
+            stat_manager.log_original_training_loss(training_loss[0].avg, epoch)
+            stat_manager.log_original_validation_loss(validation_loss[0].avg, epoch)
+            stat_manager.log_cross_entropy_training_loss(training_loss[1].avg, epoch)
+            stat_manager.log_cross_entropy_validation_loss(training_loss[1].avg, epoch)
+            stat_manager.log_subtracted_training_loss(training_loss[2].avg, epoch)
+            stat_manager.log_subtracted_validation_loss(training_loss[2].avg, epoch)
 
 
             print('PID_{} ****************** | end of epoch {:3d} | time: {:5.2f}s *********************'.format(args.local_rank, epoch,  (time.time() - epoch_start_time)))
-            print("PID_{} Validation Loss: {}, BLEU-4: {}, METEOR: {}, ROUGLE-L: {}".format(args.local_rank, validation_loss.avg, eval_scores[0][1],
+            print("PID_{} Original Loss {:5.2f}, CE Loss {:5.2f}, Subtracted Loss {:5.2f}, BLEU-4: {}, METEOR: {}, ROUGLE-L: {}".format(args.local_rank, validation_loss[0].avg, validation_loss[1].avg, validation_loss[2].avg, eval_scores[0][1],
                                                                                      eval_scores[1][1], eval_scores[2][1]))
 
             # Use BLEU score as yardstick for early stopping rather than the validation loss.

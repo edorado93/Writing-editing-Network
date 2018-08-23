@@ -33,3 +33,19 @@ class StatManager:
         if not self.is_testing:
             self.writer.add_scalar('loss/original_loss_valid', loss, epoch)
 
+    def log_cross_entropy_training_loss(self, loss, epoch):
+        if not self.is_testing:
+            self.writer.add_scalar('loss/cross_entropy_loss_train', loss, epoch)
+
+    def log_cross_entropy_validation_loss(self, loss, epoch):
+        if not self.is_testing:
+            self.writer.add_scalar('loss/cross_entropy_loss_valid', loss, epoch)
+
+    def log_subtracted_training_loss(self, loss, epoch):
+        if not self.is_testing:
+            self.writer.add_scalar('loss/subtracted_loss_train', loss, epoch)
+
+    def log_subtracted_validation_loss(self, loss, epoch):
+        if not self.is_testing:
+            self.writer.add_scalar('loss/subtracted_loss_valid', loss, epoch)
+
