@@ -35,7 +35,7 @@ function selectTopic(e) {
     if (element.classList.contains("active")) {
         element.classList.remove("active");
         topicsSelected.splice(topicsSelected.indexOf(element.innerText), 1);
-    } else if (topicsSelected.length < 2){
+    } else if (topicsSelected.length < 3){
         element.classList.add("active");
         topicsSelected.push(element.innerText);
     }
@@ -56,7 +56,7 @@ function animate() {
 
 
 function generateAbstracts(e) {
-    if (topicsSelected.length < 2) {
+    if (topicsSelected.length < 3) {
         document.getElementById("alert").removeAttribute("hidden");
     } else {
 

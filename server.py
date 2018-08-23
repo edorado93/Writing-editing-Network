@@ -8,12 +8,12 @@ sys.path.insert(0, "network/")
 from network.predictor import Predictor
 
 testing_mode = False
-should_replace_unknowns = False
+should_replace_unknowns = True
 test_topics = ["Topic"+str(i+1) for i in range(76)]
 
 def load_unknown_word_matches():
     matchings = {}
-    with open("unknown_word_matches.txt") as f:
+    with open("static/unknown_word_matches.txt") as f:
         for line in f:
             key, val = line.strip().split()
             matchings[key] = val
@@ -22,7 +22,7 @@ def load_unknown_word_matches():
 def replace_unknown_words(title_words):
     new_title = []
     for word in title_words:
-        if word not in custom_words:
+        if word not in vocab:
             if word not in unknown_matchings and word.lower() not in unknown_matchings:
                 new_title.append(word)
             else:
@@ -44,7 +44,7 @@ def load_pretrained_ARXIV_embeddings():
 def topical_word_embeddings():
     topics_emb = []
     # Read topics line by line and obtain average word embeddings for each of the topical phrase.
-    with open("top-76-relevant-topics.txt") as f:
+    with open("static/top-76-relevant-topics.txt") as f:
         for line in f:
             t = line.strip().split()
             t_emb = []
@@ -56,7 +56,6 @@ def topical_word_embeddings():
     return topics_emb
 
 def get_topics_according_to_relevance(title):
-    title = title.split()
     title_embedding = []
     for t in title:
         if t in custom_words:
@@ -76,20 +75,26 @@ if not testing_mode:
     use_cuda = torch.cuda.is_available()
 
     # The configuration to load for the model
-    conf = "l4"
+    conf = "l_and_tf2"
+
+    args, unknown = main.make_parser()
+    v = vars(args)
+    v['cuda'] = True
+    v['conf'] = conf
 
     # Initialize the bare bones model
-    config, model, _, _, vectorizer = main.init(conf, 1111, use_cuda)[0:5]
+    manager, model = main.init(args)[0:2]
+    config = manager.get_config()
 
     # Loading the saved model which will now be used for generation.
-    save = "models/"+config.experiment_name + '.pkl'
+    save = "models/web-app-models/"+config.experiment_name + '.pkl'
     print("==> Loading checkpoint", save)
     checkpoint = torch.load(save)
     model.load_state_dict(checkpoint['state_dict'])
     print("==> Successfully Loaded checkpoint", save)
 
     # Load the predictor object that shall be used for generation.
-    predictor = Predictor(model, vectorizer, use_cuda=use_cuda)
+    predictor = Predictor(model, manager.get_training_data().vectorizer, use_cuda=use_cuda)
 
     # Load unknown precomputed word matches. For every word in the fastText general model of 1 mil words
     # we have the closest matching word form our own vocab.
@@ -97,6 +102,12 @@ if not testing_mode:
     if should_replace_unknowns:
         unknown_matchings = load_unknown_word_matches()
         print("Loaded unknown word mappings: ",len(unknown_matchings))
+
+    # Load model's vocab.
+    vocab = set()
+    with open("static/vocab.txt") as f:
+        for line in f:
+            vocab.add(line.strip())
 
     # Load set of words and their embeddings in our pretrained WE.
     custom_words, custom_model = load_pretrained_ARXIV_embeddings()
@@ -114,7 +125,7 @@ app = Flask(__name__)
 @app.route('/getTopics', methods=['POST'])
 def get_topics():
     data = request.get_json()
-    title_entered_by_user = data["title"]
+    title_entered_by_user = data["title"].strip().split()
     if should_replace_unknowns:
         title_entered_by_user = replace_unknown_words(title_entered_by_user)
     topics = get_topics_according_to_relevance(title_entered_by_user) if not testing_mode else test_topics
@@ -129,7 +140,7 @@ def get_abstract():
     if should_replace_unknowns:
         seq = replace_unknown_words(seq)
         print("New title", seq)
-    topics = vectorizer.topics_to_index_tensor(topics_entered)
+    topics = manager.get_training_data().vectorizer.topics_to_index_tensor(topics_entered)
     num_exams = 2
     max_length = 200
     print("Generating now")
