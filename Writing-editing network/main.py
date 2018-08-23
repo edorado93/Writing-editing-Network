@@ -317,8 +317,8 @@ def train_epoches(dataset, model, n_epochs, teacher_forcing_ratio):
     # Loads the entire training set into memory. So that we can fetch a random batch to feed to the
     # discriminator while training.
     load_training_samples_for_shuffling(dataset)
-    for epoch in range(1, n_epochs + 1):
-    #for epoch in range(1, 2):
+    #for epoch in range(1, n_epochs + 1):
+    for epoch in range(1, 2):
         model.train(True)
         epoch_examples_total = 0
         total_examples = 0
@@ -344,14 +344,11 @@ def train_epoches(dataset, model, n_epochs, teacher_forcing_ratio):
                         target_variables, topics, teacher_forcing_ratio, True)
 
             n_batch = n_batch + 1
-            print("Epoch : ")
-            print(epoch)
-            print("Batch : ")
-            print(n_batch)
+            print("Epoch : ", epoch, "Batch : ", n_batch)
             print("Discrim loss is:", discrim_loss, "Critic Loss is: ", critic_loss, "Gen loss is:", loss_list)
             #average dis and critic loss for logging
-            total_dis = total_dis + discrim_loss
-            total_critic = total_critic + critic_loss
+            total_dis = total_dis + discrim_loss.item()
+            total_critic = total_critic + critic_loss.item()
             total_gen = total_gen + loss_list[0]
             # Record average loss
             num_examples = len(source)
