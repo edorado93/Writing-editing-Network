@@ -1,0 +1,65 @@
+<html>
+  <head>
+      <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+      <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.2.0/css/all.css" integrity="sha384-hWVjflwFxL6sNzntih27bfxkr27PmbbK/iSvJ+a4+0owXq79v+lsFkW54bOGbiDQ" crossorigin="anonymous">
+      <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+      <script src="{{ url_for('static', filename='calls.js') }}"></script>
+  </head>
+  <body>
+
+    <h1 class="display-3 main_heading">Making Abstracts Great Again</h1>
+    <div class="container search_bar">
+      <div class="row">
+          <div class="input-group">
+              <input id="title" class="form-control py-2" type="search" placeholder="Enter Title" id="example-search-input">
+              <span class="input-group-append">
+                  <button  onclick="getTopics()" class="btn btn-outline-secondary" type="button">
+                      <i class="fa fa-search"></i>
+                  </button>
+              </span>
+          </div>
+        </div>
+    </div>
+
+    <div class="container topics_display">
+      <div class="row">
+          <div class="col-sm">
+            <ul id="topics-left" class="list-group">
+            </ul>
+          </div>
+          <div class="col-sm">
+            <ul id="topics-mid" class="list-group">
+            </ul>
+          </div>
+          <div class="col-sm">
+            <ul id="topics-right" class="list-group">
+            </ul>
+          </div>
+      </div>
+      <button onclick="generateAbstracts()" id="submit" type="button" class="btn btn-primary" hidden>Generate!</button>
+      <button onclick="populateTopics()" id="more-topics" type="button" class="btn btn-primary" hidden>More Topics</button>
+      <button onclick="prevTopics()" id="prev-topics" type="button" class="btn btn-primary" hidden>Previous Topics</button>
+      <div id="alert" hidden>
+          For a fun and polished abstract, select 2 most relevant topics!
+      </div>
+    </div>
+
+    <div class="container outer-progress" hidden>
+      <div class="row">
+          <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+      </div>
+    </div>
+
+    <div class="container outer-abstract" hidden>
+        <div class="row abstract">
+        </div>
+    </div>
+
+
+
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
+  </body>
+
+</html>

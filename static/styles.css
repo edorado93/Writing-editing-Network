@@ -1,0 +1,54 @@
+.main_heading {
+  text-align: center;
+}
+
+.search_bar{
+  margin-top: 4em;
+}
+
+.topics_display {
+  margin-top: 2em;
+  font-size: 0.7em;
+}
+
+.list-group-item {
+    padding: .45rem 1rem;
+}
+
+.btn:focus {
+  outline: none;
+}
+
+.col-sm {
+  padding-left: 0em;
+  padding-right: 0.9em;
+}
+
+#alert {
+  color: red;
+  font-size: 1em;
+  margin-top: 1em;
+  margin-left: -0.6em;
+}
+
+#submit {
+  margin-top: 1.5em;
+  margin-left: -0.6em;
+}
+
+#more-topics, #prev-topics {
+  margin-top: 1.5em;
+  margin-left: 0.8em;
+}
+
+.abstract {
+  padding: 1em 1em 1em 1em;
+  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+  margin-top: 2em;
+  height: 15em;
+  overflow-y: scroll;
+}
+
+.outer-progress {
+  margin-top: 1em;
+}

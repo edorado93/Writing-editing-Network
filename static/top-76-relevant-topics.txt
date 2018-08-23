@@ -1,0 +1,76 @@
+computer vision
+simulation
+sparse matrix
+gradient
+computation
+test set
+cluster analysis
+synthetic data
+approximation algorithm
+time complexity
+reinforcement learning
+loss function
+baseline ( configuration management )
+neural networks
+pixel
+nonlinear system
+optimization problem
+natural language
+supervised learning
+numerical analysis
+recurrent neural network
+sampling ( signal processing )
+natural language processing
+scalability
+bayesian network
+end-to-end principle
+unsupervised learning
+heuristic
+matrix regularization
+iteration
+computational complexity theory
+artificial intelligence
+text corpus
+map
+mathematical optimization
+gradient descent
+approximation
+parsing
+calculus of variations
+interaction
+support vector machine
+machine translation
+database
+high- and low-level
+markov chain
+dictionary
+feature vector
+encoder
+convolution
+robot
+polynomial
+relevance
+object detection
+speech recognition
+causality
+sensor
+time series
+coefficient
+generative model
+image segmentation
+mnist database
+eisenstein 's criterion
+image processing
+feature learning
+regret ( decision theory )
+autonomous car
+ground truth
+statistical classification
+feature extraction
+autoencoder
+kernel ( operating system )
+graphical model
+data mining
+value ( ethics )
+noise reduction
+entity
