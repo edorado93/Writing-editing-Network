@@ -1,25 +1,21 @@
-import time, argparse, math, os, sys, pickle, copy
+import time, argparse, os, sys, pickle
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
+from torch.utils.data.distributed import DistributedSampler
 import torch.optim as optim
-import numpy as np
 from torch.backends import cudnn
-from utils import Vectorizer, headline2abstractdataset, load_embeddings, plot_topical_encoding
-from seq2seq.fb_seq2seq import FbSeq2seq
-from seq2seq.EncoderRNN import EncoderRNN
-from seq2seq.DecoderRNNFB import DecoderRNNFB
-from seq2seq.ContextEncoder import ContextEncoder
+from utils import Vectorizer, headline2abstractdataset, load_embeddings
 from predictor import Predictor
-from tensorboardX import SummaryWriter
-import configurations
+from seq2seq.model_manager import ModelManager
+from seq2seq.stat_manager import StatManager, AverageMeter
+from seq2seq.distributed_sequential_sampler import DistributedSequentialSampler
 from pprint import pprint
 import os.path
 sys.path.insert(0,'..')
 from eval import Evaluate
 
-args, model, criterion, optimizer, config, vectorizer, abstracts, validation_abstracts, writer, validation_eval, vocab_size \
- = None, None, None, None, None, None, None, None, None, None, None
+manager, model, criterion, optimizer, train_sampler, stat_manager = None, None, None, None, None, None
 
 def make_parser():
     parser = argparse.ArgumentParser(description='seq2seq model')
@@ -31,76 +27,33 @@ def make_parser():
                         help='train(0)/predict_sentence(1)/predict_file(2) or evaluate(3)')
     parser.add_argument('--conf', type=str,
                         help="configuration to load for the training")
+    parser.add_argument("--local_rank", type=int, default=0,
+                        help="The local rank of the process provided by the distributed launch utility, if being used")
 
     return parser.parse_known_args()
 
-def init(conf, seed, cuda):
+def init(args):
     cudnn.benchmark = True
-    config = configurations.get_conf(conf)
-    writer = SummaryWriter("saved_runs/" + config.experiment_name)
+    manager = ModelManager(args)
+    train_sampler = None
+    model = manager.get_model()
+    stat_manager = StatManager(config, is_testing=False)
 
-    # Set the random seed manually for reproducibility.
-    torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        if not cuda:
-            print("WARNING: You have a CUDA device, so you should probably run with --cuda")
-        else:
-            torch.cuda.manual_seed(seed)
-
-    validation_eval = Evaluate()
-    cwd = os.getcwd()
-    vectorizer = Vectorizer(min_frequency=config.min_freq)
-
-    data_path = cwd + config.relative_data_path
-    abstracts = headline2abstractdataset(data_path, vectorizer, cuda, max_len=1000, use_topics=config.use_topics, use_structure_info=config.use_labels)
-
-    validation_data_path = cwd + config.relative_dev_path
-    validation_abstracts = headline2abstractdataset(validation_data_path, vectorizer, cuda, max_len=1000, use_topics=config.use_topics, use_structure_info=config.use_labels)
-
-    print("number of training examples: %d" % len(abstracts))
-
-    context_encoder = None
-    vocab_size = len(vectorizer.word2idx)
-    embedding = nn.Embedding(vocab_size, config.emsize, padding_idx=0)
-
-    if config.pretrained:
-        embedding = load_embeddings(embedding, abstracts.vectorizer.word2idx, config.pretrained, config.emsize)
-
-    if config.use_topics or config.use_labels:
-        context_encoder = ContextEncoder(config.context_dim, len(vectorizer.context_vectorizer), config.emsize)
-
-    title_encoder_rnn_dim = config.emsize + (config.use_topics * abstracts.max_context_length) * config.context_dim
-    abstract_encoder_rnn_dim = config.emsize + (config.use_labels + config.use_topics * abstracts.max_context_length) * config.context_dim
-
-    structure_labels = {"introduction" : abstracts.vectorizer.context_vectorizer["introduction"],
-                        "body" : abstracts.vectorizer.context_vectorizer["body"],
-                        "conclusion": abstracts.vectorizer.context_vectorizer["conclusion"],
-                        "full_stop": abstracts.vectorizer.word2idx["."],
-                        "question_mark": abstracts.vectorizer.word2idx["?"]}
-
-    encoder_title = EncoderRNN(vocab_size, embedding, abstracts.head_len, title_encoder_rnn_dim, abstract_encoder_rnn_dim, input_dropout_p=config.dropout,
-                         n_layers=config.nlayers, bidirectional=config.bidirectional, rnn_cell=config.cell)
-    encoder = EncoderRNN(vocab_size, embedding, abstracts.abs_len, abstract_encoder_rnn_dim, abstract_encoder_rnn_dim, input_dropout_p=config.dropout, variable_lengths = False,
-                      n_layers=config.nlayers, bidirectional=config.bidirectional, rnn_cell=config.cell)
-    decoder = DecoderRNNFB(vocab_size, embedding, abstracts.abs_len, abstract_encoder_rnn_dim, sos_id=2, eos_id=1,
-                         n_layers=config.nlayers, rnn_cell=config.cell, bidirectional=config.bidirectional,
-                         input_dropout_p=config.dropout, dropout_p=config.dropout, labels=structure_labels, use_labels=config.use_labels, context_model=context_encoder, use_cuda=cuda)
-    model = FbSeq2seq(encoder_title, encoder, context_encoder, decoder)
-    total_params = sum(x.size()[0] * x.size()[1] if len(x.size()) > 1 else x.size()[0] for x in model.parameters())
-    print('Model total parameters:', total_params, flush=True)
-    configurations.print_config(config)
-
-    if config.dataparallel and torch.cuda.device_count() > 1:
-        print("Let's use", torch.cuda.device_count(), "GPUs!")
-        model = nn.DataParallel(model)
-
+    optimizer = optim.Adam(model.parameters(), lr=config.lr)
     criterion = nn.CrossEntropyLoss(ignore_index=0)
-    if cuda:
+    if args.cuda:
+        torch.cuda.set_device(args.local_rank)
         model = model.cuda()
         criterion = criterion.cuda()
-    optimizer = optim.Adam(model.parameters(), lr=config.lr)
 
-    return config, model, criterion, optimizer, vectorizer, abstracts, validation_abstracts, writer, validation_eval, vocab_size
+    if config.dataparallel and torch.cuda.device_count() > 1:
+        torch.distributed.init_process_group(backend='nccl', init_method='env://')
+        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank],
+                                                          output_device=args.local_rank)
+        train_sampler = DistributedSequentialSampler(training_abstracts)
+        config.batch_size //= torch.cuda.device_count()
+
+    return manager, model, criterion, optimizer, train_sampler, stat_manager
 
 # Mask variable
 def _mask(prev_generated_seq):
@@ -122,6 +75,7 @@ def _mask(prev_generated_seq):
 
 def train_batch(input_variable, input_lengths, target_variable, topics, structure_abstracts, model,
                 teacher_forcing_ratio, is_eval=False):
+    vocab_size = len(training_abstracts.vectorizer.word2idx)
     loss_list = []
     # Forward propagation
     prev_generated_seq = None
@@ -180,7 +134,7 @@ def bleu_scoring(abstracts, drafts):
     for i in range(3):
         scores.append([])
     for i in range(config.num_exams):
-        final_scores = validation_eval.evaluate(live=True, cand=cands[i], ref=refs)
+        final_scores = manager.get_eval_object().evaluate(live=True, cand=cands[i], ref=refs)
         for j in range(3):
             scores[j].append(final_scores[fields[j]])
     return scores
@@ -188,8 +142,8 @@ def bleu_scoring(abstracts, drafts):
 def evaluate(validation_dataset, model, teacher_forcing_ratio):
     validation_loader = DataLoader(validation_dataset, config.validation_batch_size)
     model.eval()
-    epoch_loss_list = [0] * config.num_exams
     abstracts = []
+    validation_loss = AverageMeter()
     drafts = [[] for _ in range(config.num_exams)]
     for batch_idx, data in enumerate(validation_loader):
         topics = data[3] if config.use_topics else None
@@ -201,134 +155,129 @@ def evaluate(validation_dataset, model, teacher_forcing_ratio):
         # Run the model on the validation data set WITH teacher forcing
         loss_list, batch_sentences, batch_drafts = train_batch(input_variables, input_lengths,
                                 target_variables, topics, structure_abstracts, model, teacher_forcing_ratio=teacher_forcing_ratio, is_eval=True)
-        num_examples = len(input_variables)
+
+        # Updayte average validation loss
+        validation_loss.update(loss_list[1], input_variables.size(0))
+
         abstracts.extend(batch_sentences)
         for i in range(config.num_exams):
-            epoch_loss_list[i] += loss_list[i] * num_examples
             drafts[i].extend(batch_drafts[i])
 
     scores = bleu_scoring(abstracts, drafts)
-    for i in range(config.num_exams):
-        epoch_loss_list[i] /= float(len(validation_loader.dataset))
-    return epoch_loss_list, scores
+    return validation_loss, scores
 
-def train_epoches(start_epoch, dataset, model, n_epochs, teacher_forcing_ratio):
-    train_loader = DataLoader(dataset, config.batch_size)
-    prev_epoch_loss_list = [0.] * config.num_exams
+def train_epoches(start_epoch, dataset, model, n_epochs, teacher_forcing_ratio, prev_epoch_loss_list):
+    train_loader = DataLoader(dataset, config.batch_size, sampler=train_sampler)
     patience = 0
-    start = time.time()
+    cutoff_time_start = time.time()
     for epoch in range(start_epoch, n_epochs + 1):
-        if time.time() - start >= 82400:
+        if time.time() - cutoff_time_start >= 82400:
             print("Exiting with code 99", flush=True)
             exit(99)
+
+        training_loss = AverageMeter()
+        batch_time = AverageMeter()
+        epoch_start_time = time.time()
+
+        # Put the model in training mode.
         model.train(True)
-        epoch_examples_total = 0
-        total_examples = 0
+
         start = time.time()
-        epoch_start_time = start
-        total_loss = 0
-        training_loss_list = [0] * config.num_exams
         for batch_idx, data in enumerate(train_loader):
+            # Use 1 based indexing for logging purposes
+            batch_idx += 1
             topics = data[3] if config.use_topics else None
             structure_abstracts = (data[4] if config.use_topics else data[3]) if config.use_labels else None
 
             input_variables = data[0]
             target_variables = data[1]
             input_lengths = data[2]
+
             # train model
             loss_list = train_batch(input_variables, input_lengths,
                                target_variables, topics, structure_abstracts, model, teacher_forcing_ratio)
-            # Record average loss
-            num_examples = len(input_variables)
-            epoch_examples_total += num_examples
-            for i in range(config.num_exams):
-                training_loss_list[i] += loss_list[i] * num_examples
 
-            # Add to local variable for logging
-            total_loss += loss_list[-1] * num_examples
-            total_examples += num_examples
-            if total_examples % config.log_interval == 0:
-                cur_loss = total_loss / float(config.log_interval)
-                end_time = time.time()
-                elapsed = end_time - start
-                start = end_time
-                total_loss = 0
-                print('| epoch {:3d} | {:5d}/{:5d} examples | lr {:02.4f} | ms/batch {:5.2f} | '
-                      'loss {:5.2f}'.format(
-                    epoch, total_examples, len(train_loader.dataset), optimizer.param_groups[0]['lr'],
-                                           elapsed * 1000 / config.log_interval, cur_loss),
-                    flush=True)
+            # Update the training loss.
+            training_loss.update(loss_list[1], input_variables.size(0))
 
-        validation_loss, eval_scores = evaluate(validation_abstracts, model, teacher_forcing_ratio)
-        if config.use_topics:
-            plot_topical_encoding(vectorizer.context_vectorizer, model.context_encoder.embedding, writer, epoch)
-        for i in range(config.num_exams):
-            training_loss_list[i] /= float(epoch_examples_total)
-            writer.add_scalar('loss/train/train_loss_abstract_'+str(i), training_loss_list[i], epoch)
-            writer.add_scalar('loss/valid/validation_loss_abstract_' + str(i), validation_loss[i], epoch)
-            writer.add_scalar('eval_scores/BLEU_' + str(i), eval_scores[0][i], epoch)
-            writer.add_scalar('eval_scores/METEOR_' + str(i), eval_scores[1][i], epoch)
-            writer.add_scalar('eval_scores/ROUGLE_' + str(i), eval_scores[2][i], epoch)
+            # Update batch processing times.
+            batch_time.update(time.time() - start)
+            start = time.time()
 
-        print('****************** | end of epoch {:3d} | time: {:5.2f}s *********************'.format(epoch,  (time.time() - epoch_start_time)))
-        print("Validation Loss: ")
-        pprint(validation_loss)
-        print("BLEU-4:")
-        pprint(eval_scores[0])
-        print("METEOR:")
-        pprint(eval_scores[1])
-        print("ROUGLE-L:")
-        pprint(eval_scores[2])
+            # Log after a fixed interval
+            if batch_idx % config.log_interval == 0:
+                print('PID_{} | epoch {:3d} | {:5d}/{:5d} examples | lr {:02.4f} | ms/batch {:5.2f} | '
+                      'loss {:5.2f}'.format(args.local_rank, epoch, batch_idx * config.batch_size, len(train_sampler) if train_sampler else len(train_loader.dataset), optimizer.param_groups[0]['lr'],
+                                           batch_time.avg * 1000, training_loss.avg), flush=True)
 
-        # Use BLEU score as yardstick for early stopping rather than the validation loss.
-        if prev_epoch_loss_list[1] > eval_scores[0][1]:
-            patience += 1
-            if patience == config.patience:
-                print("Breaking off now. Performance has not improved on validation set since the last",config.patience,"epochs")
-                break
-        else:
-            save_model(epoch)
-            print("Saved best model till now!")
-            patience = 0
-            prev_epoch_loss_list = eval_scores[0][:]
+        if args.local_rank == 0:
+            validation_loss, eval_scores = evaluate(validation_abstracts, model, teacher_forcing_ratio)
 
-def save_model(epoch):
+            stat_manager.log_original_training_loss(training_loss.avg, epoch)
+            stat_manager.log_original_validation_loss(validation_loss.avg, epoch)
+
+
+            print('PID_{} ****************** | end of epoch {:3d} | time: {:5.2f}s *********************'.format(args.local_rank, epoch,  (time.time() - epoch_start_time)))
+            print("PID_{} Validation Loss: {}, BLEU-4: {}, METEOR: {}, ROUGLE-L: {}".format(args.local_rank, validation_loss.avg, eval_scores[0][1],
+                                                                                     eval_scores[1][1], eval_scores[2][1]))
+
+            # Use BLEU score as yardstick for early stopping rather than the validation loss.
+            if prev_epoch_loss_list[1] > eval_scores[0][1]:
+                patience += 1
+                if patience == config.patience:
+                    print("Breaking off now. Performance has not improved on validation set since the last",config.patience,"epochs")
+                    break
+            else:
+                patience = 0
+                prev_epoch_loss_list = eval_scores[0][:]
+                save_model(epoch, prev_epoch_loss_list)
+                print("Saved best model till now!")
+            print("")
+
+def save_model(epoch, prev_epoch_loss_list):
     state = {'epoch': epoch + 1, 'state_dict': model.state_dict(),
-             'optimizer': optimizer.state_dict()}
+             'optimizer': optimizer.state_dict(), 'best_eval_scores': prev_epoch_loss_list}
     torch.save(state, args.save)
 
 def load_checkpoint():
     start_epoch = 0
+    prev_epoch_loss_list = [0.] * config.num_exams
     if os.path.isfile(args.save):
         print("=> loading checkpoint '{}'".format(args.save))
         checkpoint = torch.load(args.save)
         start_epoch = checkpoint['epoch']
         model.load_state_dict(checkpoint['state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer'])
-        print("=> loaded checkpoint '{}' (epoch {})"
-              .format(args.save, checkpoint['epoch']))
+        # Only for older models trained without this
+        if 'best_eval_scores' in checkpoint:
+            prev_epoch_loss_list = checkpoint['best_eval_scores']
+        print("=> loaded checkpoint '{}' (epoch {}) best_eval_scores {}"
+              .format(args.save, checkpoint['epoch'], prev_epoch_loss_list))
     else:
         print("=> no checkpoint found at '{}', starting from scratch".format(args.save))
 
-    return start_epoch
+    return start_epoch, prev_epoch_loss_list
 
 if __name__ == "__main__":
     args, unknown = make_parser()
-    config, model, criterion, optimizer, vectorizer, abstracts, validation_abstracts, writer, validation_eval, vocab_size = init(args.conf, args.seed, args.cuda)
+    manager, model, criterion, optimizer, train_sampler, stat_manager = init(args)
+    config = manager.get_config()
+    validation_abstracts = manager.get_validation_data()
+    training_abstracts = manager.get_training_data()
     v = vars(args)
     v['save'] = "models/"+config.experiment_name + '.pkl'
 
     if args.mode == 0:
         # train
         try:
-            start_epoch = load_checkpoint()
-            train_epoches(start_epoch, abstracts, model, config.epochs, teacher_forcing_ratio=1)
+            start_epoch, prev_epoch_loss_list = load_checkpoint()
+            train_epoches(start_epoch, training_abstracts, model, config.epochs, teacher_forcing_ratio=1, prev_epoch_loss_list=prev_epoch_loss_list)
         except KeyboardInterrupt:
             print('-' * 89)
             print('Exiting from training early')
     elif args.mode == 1:
         load_checkpoint()
-        predictor = Predictor(model, abstracts.vectorizer, use_cuda=args.cuda)
+        predictor = Predictor(model, training_abstracts.vectorizer, use_cuda=args.cuda)
         count = 1
         while True:
             seq_str = input("Type in a source sequence:\n")
@@ -336,7 +285,7 @@ if __name__ == "__main__":
             topics = None
             if topics_required in ["y", "yes"]:
                 topics = input("Provide a list of comma separated topics:\n").split(',')
-                topics = vectorizer.topics_to_index_tensor(topics)
+                topics = training_abstracts.vectorizer.topics_to_index_tensor(topics)
             seq = seq_str.strip().split(' ')
             num_exams = int(input("Type the number of drafts:\n"))
             max_length = int(input("Type the number of words to be generated\n"))
@@ -347,41 +296,8 @@ if __name__ == "__main__":
                 print(outputs[i])
             print('-' * 120)
             count += 1
-    elif args.mode == 2:
-        num_exams = 3
-        # predict file
-        load_checkpoint()
-        predictor = Predictor(model, abstracts.vectorizer, use_cuda=args.cuda)
-        print("number of test examples: %d" % len(validation_abstracts))
-        f_out_name = cwd + config.relative_gen_path
-        outputs = []
-        title = []
-        for j in range(num_exams):
-            outputs.append([])
-        i = 0
-        print("Start generating:")
-        train_loader = DataLoader(validation_abstracts, config.batch_size)
-        for batch_idx, (source, target, input_lengths) in enumerate(train_loader):
-            output_seq = predictor.predict_batch(source, input_lengths.tolist(), num_exams)
-            for seq in output_seq:
-                title.append(seq[0])
-                for j in range(num_exams):
-                    outputs[j].append(seq[j+1])
-                i += 1
-                if i % 100 == 0:
-                    print("Percentages:  %.4f" % (i/float(len(validation_abstracts))))
-
-        print("Start writing:")
-        for i in range(num_exams):
-            out_name = f_out_name % i
-            f_out = open(out_name, 'w')
-            for j in range(len(title)):
-                f_out.write(title[j] + '\n' + outputs[i][j] + '\n\n')
-                if j % 100 == 0:
-                    print("Percentages:  %.4f" % (j/float(len(validation_abstracts))))
-            f_out.close()
-        f_out.close()
     elif args.mode == 3:
+        cwd = os.getcwd()
         test_data_path = cwd + config.relative_test_path
         test_abstracts = headline2abstractdataset(test_data_path, vectorizer, args.cuda, max_len=1000,
                                                         use_topics=config.use_topics,

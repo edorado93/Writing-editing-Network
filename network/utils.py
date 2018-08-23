@@ -29,14 +29,6 @@ def load_embeddings(pytorch_embedding, word2idx, filename, embedding_size):
     pytorch_embedding.weight.data.copy_(torch.from_numpy(arr))
     return pytorch_embedding
 
-def plot_topical_encoding(topic_dictionary, topical_embeddings, tensorboardX_writer, step):
-    topics = []
-    embeddings = []
-    for t, index in topic_dictionary.items():
-        topics.append(t)
-        embeddings.append(topical_embeddings(torch.tensor([index], dtype=torch.long).cuda()))
-    tensorboardX_writer.add_embedding(torch.squeeze(torch.stack(embeddings)), topics, global_step=step)
-
 #Transforms a Corpus into lists of word indices.
 class Vectorizer:
     def __init__(self, max_words=None, min_frequency=None, start_end_tokens=True, maxlen=None):
