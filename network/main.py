@@ -38,6 +38,7 @@ def init(args):
     train_sampler = None
     model = manager.get_model()
     config = manager.get_config()
+    training_abstracts = manager.get_training_data()
     stat_manager = StatManager(config, is_testing=False)
 
     optimizer = optim.Adam(model.parameters(), lr=config.lr)
