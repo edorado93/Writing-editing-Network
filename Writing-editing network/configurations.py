@@ -187,5 +187,4 @@ configuration = {
                  "l_and_tf3": LabelsAndTf3()}
 
 def get_conf(name):
-    print("Config name is {}".format(name))
     return configuration[name]

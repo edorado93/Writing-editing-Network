@@ -19,7 +19,7 @@ class DistributedSequentialSampler(Sampler):
         indices = list(range(len(self.dataset)))
 
         # add extra samples to make it evenly divisible
-        indices += indices[:(self.total_size - len(indices))]
+        indices += [indices[-1] for _ in range(self.total_size - len(indices))]
         assert len(indices) == self.total_size
 
         # subsample

@@ -17,6 +17,8 @@ class ModelManager:
 
         # Model Configuration to execute.
         self.config = configurations.get_conf(args.conf)
+        if args.local_rank == 0:
+            print("Config is",args.conf)
 
         # Model's checkpoint filename.
         v = vars(self.args)
@@ -57,7 +59,8 @@ class ModelManager:
         validation_abstracts = headline2abstractdataset(validation_data_path, vectorizer, args.cuda, max_len=1000,
                                                         use_topics=config.use_topics,
                                                         use_structure_info=config.use_labels)
-        print("number of training examples: %d" % len(training_abstracts), flush=True)
+        if args.local_rank == 0:
+            print("number of training examples: %d" % len(training_abstracts), flush=True)
         return training_abstracts, validation_abstracts
 
     def initialize_model(self):
@@ -97,7 +100,8 @@ class ModelManager:
                                use_labels=config.use_labels, context_model=context_encoder, use_cuda=args.cuda)
         model = FbSeq2seq(encoder_title, encoder, context_encoder, decoder)
         total_params = sum(x.size()[0] * x.size()[1] if len(x.size()) > 1 else x.size()[0] for x in model.parameters())
-        print('Model total parameters:', total_params, flush=True)
+        if args.local_rank == 0:
+            print('Model total parameters:', total_params, flush=True)
 
         return model
 
