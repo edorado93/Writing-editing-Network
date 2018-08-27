@@ -14,6 +14,7 @@ from pprint import pprint
 import os.path
 sys.path.insert(0,'..')
 from eval import Evaluate
+from collections import OrderedDict
 
 manager, model, criterion, optimizer, train_sampler, stat_manager = None, None, None, None, None, None
 
@@ -248,7 +249,12 @@ def load_checkpoint():
         print("=> loading checkpoint '{}'".format(args.save))
         checkpoint = torch.load(args.save)
         start_epoch = checkpoint['epoch']
-        model.load_state_dict(checkpoint['state_dict'])
+        state_dict = checkpoint['state_dict']
+        new_state_dict = OrderedDict()
+        for k, v in state_dict.items():
+            name = k[7:] if k.startswith("module.") else k
+            new_state_dict[name] = v
+        model.load_state_dict(new_state_dict)
         optimizer.load_state_dict(checkpoint['optimizer'])
         # Only for older models trained without this
         if 'best_eval_scores' in checkpoint:
@@ -301,7 +307,7 @@ if __name__ == "__main__":
     elif args.mode == 3:
         cwd = os.getcwd()
         test_data_path = cwd + config.relative_test_path
-        test_abstracts = headline2abstractdataset(test_data_path, vectorizer, args.cuda, max_len=1000,
+        test_abstracts = headline2abstractdataset(test_data_path, validation_abstracts.vectorizer, args.cuda, max_len=1000,
                                                         use_topics=config.use_topics,
                                                         use_structure_info=config.use_labels)
         load_checkpoint()
