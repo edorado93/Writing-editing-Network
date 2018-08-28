@@ -232,14 +232,14 @@ def evaluate(validation_dataset, model, teacher_forcing_ratio):
 def train_epoches(start_epoch, dataset, model, n_epochs, teacher_forcing_ratio, prev_epoch_loss_list):
     train_loader = DataLoader(dataset, config.batch_size, sampler=train_sampler)
     patience = 0
-    total_repetitions = 0
-    total_generated_words = 0
     cutoff_time_start = time.time()
     for epoch in range(start_epoch, n_epochs + 1):
         if time.time() - cutoff_time_start >= 82400:
             print("Exiting with code 99", flush=True)
             exit(99)
 
+        total_repetitions = 0
+        total_generated_words = 0
         training_loss = [AverageMeter() for _ in range(3)]
         batch_time = AverageMeter()
         epoch_start_time = time.time()
@@ -285,21 +285,24 @@ def train_epoches(start_epoch, dataset, model, n_epochs, teacher_forcing_ratio, 
             stat_manager.log_original_training_loss(training_loss[0].avg, epoch)
             stat_manager.log_original_validation_loss(validation_loss[0].avg, epoch)
             stat_manager.log_cross_entropy_training_loss(training_loss[1].avg, epoch)
-            stat_manager.log_cross_entropy_validation_loss(training_loss[1].avg, epoch)
+            stat_manager.log_cross_entropy_validation_loss(validation_loss[1].avg, epoch)
             stat_manager.log_subtracted_training_loss(training_loss[2].avg, epoch)
-            stat_manager.log_subtracted_validation_loss(training_loss[2].avg, epoch)
+            stat_manager.log_subtracted_validation_loss(validation_loss[2].avg, epoch)
 
 
             print('PID_{} ****************** | end of epoch {:3d} | time: {:5.2f}s *********************'.format(args.local_rank, epoch,  (time.time() - epoch_start_time)))
-            print("PID_{} Original Loss {:5.2f}, CE Loss {:5.2f}, Subtracted Loss {:5.2f}, BLEU-4: {}, METEOR: {}, ROUGLE-L: {}".format(args.local_rank, validation_loss[0].avg, validation_loss[1].avg, validation_loss[2].avg, eval_scores[0][1],
-                                                                                     eval_scores[1][1], eval_scores[2][1]))
+            print("PID_{} Original Loss {:5.2f}, CE Loss {:5.2f}, Subtracted Loss {:5.2f}, BLEU-4: {}, METEOR: {}, ROUGLE-L: {}, Repetitions: {}, Total_Words: {}, Rep Percentage: {}".format(
+                    args.local_rank, validation_loss[0].avg, validation_loss[1].avg, validation_loss[2].avg,
+                    eval_scores[0][1],
+                    eval_scores[1][1], eval_scores[2][1], total_repetitions, total_generated_words,
+                    total_repetitions / total_generated_words))
 
             # Use BLEU score as yardstick for early stopping rather than the validation loss.
             if prev_epoch_loss_list[1] > eval_scores[0][1]:
                 patience += 1
                 if patience == config.patience:
                     print("Breaking off now. Performance has not improved on validation set since the last",config.patience,"epochs")
-                    break
+                    exit(0)
             else:
                 patience = 0
                 prev_epoch_loss_list = eval_scores[0][:]
