@@ -29,11 +29,17 @@ parser.add_argument('--mode', type=int,  default=0,
                     help='train(0)/predict_sentence(1)/predict_file(2) or evaluate(3)')
 parser.add_argument('--conf', type=str,
                     help="configuration to load for the training")
+parser.add_argument('--reinforce_weight', type=float,
+                    help="weight to multiply reinforce loss with", default=0.001)
+parser.add_argument('--gamma', type=float,
+                    help="value for gamma - critic reward discount value", default=0.8835659)
+parser.add_argument('--experiment_name', type=str,
+                    help="experiment variable name")
 args = parser.parse_args()
 config = configurations.get_conf(args.conf)
-writer = SummaryWriter("saved_runs/" + config.experiment_name)
+writer = SummaryWriter("saved_runs/" + args.experiment_name)
 v = vars(args)
-v['save'] = "models/"+config.experiment_name + '.pkl'
+v['save'] = "models/"+ args.experiment_name + '.pkl'
 
 # Set the random seed manually for reproducibility.
 torch.manual_seed(args.seed)
@@ -165,7 +171,7 @@ def train_discriminator(input_variable, target_variable, is_eval=False):
     loss = discrim_criterion(dis_sig, target_variable)
 
     est_values = critic_model(input_variable, batch_size)
-    critic_loss = criticLoss(dis_out, est_values, sequence_length, batch_size, config, args.cuda)
+    critic_loss = criticLoss(dis_out, est_values, sequence_length, batch_size, config, args.gamma, args.cuda)
 
     """ Check if we need this if condition here, since we are freezing the weights anyhow """
     if not is_eval:
@@ -228,7 +234,8 @@ def train_generator(input_variable, input_lengths, target_variable, topics, mode
             est_values = critic_model(discrim_input, batch_size)
             dis_out, dis_sig = discrim_model(discrim_input, sequence_length, batch_size)
             #gen_log is the log probabilities of generator output
-            reinforce_loss, final_gen_obj = reinforce(gen_log, dis_out, est_values, sequence_length, batch_size, config, args.cuda)
+            reinforce_loss, final_gen_obj = reinforce(gen_log, dis_out, est_values, sequence_length, batch_size, config, args.gamma, args.cuda)
+            #print(reinforce_loss, final_gen_obj)
         else:
             reinforce_loss = 0
 
@@ -236,8 +243,10 @@ def train_generator(input_variable, input_lengths, target_variable, topics, mode
         #print(reinforce_loss)
         #print("Gen_cross entropy loss : ")
         #print(criterion(decoder_outputs_reshaped, target_variable_reshaped))
-
-        lossi = criterion(decoder_outputs_reshaped, target_variable_reshaped) + ( 0.001 * reinforce_loss )
+        #print(args.reinforce_weight)
+        #print(args.reinforce_weight * reinforce_loss)
+        #print(criterion(decoder_outputs_reshaped, target_variable_reshaped) + ( args.reinforce_weight * reinforce_loss ))
+        lossi = criterion(decoder_outputs_reshaped, target_variable_reshaped) + ( args.reinforce_weight * reinforce_loss )
         loss_list.append(lossi.item())
         if not is_eval:
             model.zero_grad()
@@ -317,8 +326,8 @@ def train_epoches(dataset, model, n_epochs, teacher_forcing_ratio):
     # Loads the entire training set into memory. So that we can fetch a random batch to feed to the
     # discriminator while training.
     load_training_samples_for_shuffling(dataset)
-    #for epoch in range(1, n_epochs + 1):
-    for epoch in range(1, 2):
+    for epoch in range(1, n_epochs + 1):
+    #for epoch in range(1, 2):
         model.train(True)
         epoch_examples_total = 0
         total_examples = 0
@@ -382,9 +391,7 @@ def train_epoches(dataset, model, n_epochs, teacher_forcing_ratio):
             writer.add_scalar('loss/train/train_loss_abstract_'+str(i), training_loss_list[i], epoch)
             writer.add_scalar('loss/valid/validation_loss_abstract_' + str(i), validation_loss[i], epoch)
 
-        print('| end of epoch {:3d} | valid loss {:5.2f},{:5.2f},{:5.2f} | time: {:5.2f}s'.format(epoch, validation_loss[0], validation_loss[1], validation_loss[2],
-                                                                                   (time.time() - epoch_start_time)),
-              flush=True)
+        print('| end of epoch {:3d} | dis_loss {:5.2f} | valid loss {:5.2f},{:5.2f},{:5.2f} | time: {:5.2f}s'.format(epoch, (total_dis/n_batch), validation_loss[0], validation_loss[1], validation_loss[2],(time.time() - epoch_start_time)), flush=True)
         if prev_epoch_loss_list[:-1] < validation_loss[:-1]:
             patience += 1
             if patience == config.patience:

@@ -83,8 +83,8 @@ class Critic(nn.Module):
         out_space1 = out_space.squeeze(2)
         return out_space1
 
-def criticLoss(dis_pred, est_val, seq_length, batch_size, config, use_cuda=False):
-    gamma = 0.8835659
+def criticLoss(dis_pred, est_val, seq_length, batch_size, config, args_gamma, use_cuda=False):
+    gamma = args_gamma
     m = nn.Sigmoid()
     rewards = torch.log(m(dis_pred))
     cumulative_rewards = []
@@ -105,8 +105,8 @@ def criticLoss(dis_pred, est_val, seq_length, batch_size, config, use_cuda=False
     critic_loss = loss(est_val, cumulative_rewards)
     return critic_loss
 
-def reinforce(gen_log_prob, dis_pred, est_val, seq_length, batch_size, config, use_cuda=False):
-    gamma = 0.8835659
+def reinforce(gen_log_prob, dis_pred, est_val, seq_length, batch_size, config, args_gamma, use_cuda=False):
+    gamma = args_gamma
     m = nn.Sigmoid()
     rewards = torch.log(m(dis_pred))
     cumulative_rewards = []

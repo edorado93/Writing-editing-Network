@@ -102,3 +102,6 @@ ENV/
 
 # my_files
 /models/*
+/models_old/*
+/saved_old_runs/*
+/saved_runs/*
