@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .attention import Attention
+from .attention import Attention, IntraAttention
 from .baseRNN import BaseRNN
 import random
 
@@ -59,12 +59,12 @@ class DecoderRNNFB(BaseRNN):
         self.sos_id = sos_id
         self.init_input = None
         self.embedding = embedding
+        self.intra_attention = IntraAttention(self.hidden_size)
         self.attention_title = Attention(self.hidden_size)
         self.attention_hidden = Attention(self.hidden_size)
         #self.fc = nn.Linear(self.hidden_size*2, self.hidden_size)
         self.fc = Gate(self.hidden_size)
-        self.out1 = nn.Linear(self.hidden_size, self.output_size)
-        self.out2 = nn.Linear(self.hidden_size, self.output_size)
+        self.out1 = nn.Linear(2 * self.hidden_size, self.output_size)
 
         # Structural embedding variables requirement during test time
         self.context_model = context_model
@@ -92,7 +92,10 @@ class DecoderRNNFB(BaseRNN):
         else:
             output_states_attn2, attn2 = self.attention_hidden(output_states, pg_encoder_states)
             output_states_attn = self.fc(output_states_attn1, output_states_attn2)
-        outputs = self.out1(output_states_attn.view(-1, self.hidden_size)).\
+
+        intra_attention = self.intra_attention(hidden)
+        output_states_attn = torch.cat(output_states_attn, intra_attention)
+        outputs = self.out1(output_states_attn.view(-1, 2 * self.hidden_size)).\
             view(batch_size, output_size, -1)
         return outputs, output_states_attn, hidden, attn
 
