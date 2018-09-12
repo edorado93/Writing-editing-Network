@@ -2,10 +2,9 @@ import time, argparse, os, sys, pickle
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from torch.utils.data.distributed import DistributedSampler
 import torch.optim as optim
 from torch.backends import cudnn
-from utils import Vectorizer, headline2abstractdataset, load_embeddings
+from utils import headline2abstractdataset
 from predictor import Predictor
 from seq2seq.model_manager import ModelManager
 from seq2seq.stat_manager import StatManager, AverageMeter
@@ -218,22 +217,22 @@ def train_epoches(start_epoch, dataset, model, n_epochs, teacher_forcing_ratio, 
             stat_manager.log_original_validation_loss(validation_loss.avg, epoch)
 
 
-            print('PID_{} ****************** | end of epoch {:3d} | time: {:5.2f}s *********************'.format(args.local_rank, epoch,  (time.time() - epoch_start_time)))
+            print('PID_{} ****************** | end of epoch {:3d} | time: {:5.2f}s *********************'.format(args.local_rank, epoch,  (time.time() - epoch_start_time)), flush=True)
             print("PID_{} Validation Loss: {}, BLEU-4: {}, METEOR: {}, ROUGLE-L: {}".format(args.local_rank, validation_loss.avg, eval_scores[0][1],
-                                                                                     eval_scores[1][1], eval_scores[2][1]))
+                                                                                     eval_scores[1][1], eval_scores[2][1]), flush=True)
 
             # Use BLEU score as yardstick for early stopping rather than the validation loss.
             if prev_epoch_loss_list[1] > eval_scores[0][1]:
                 patience += 1
                 if patience == config.patience:
-                    print("Breaking off now. Performance has not improved on validation set since the last",config.patience,"epochs")
-                    break
+                    print("Breaking off now. Performance has not improved on validation set since the last",config.patience,"epochs", flush=True)
+                    exit(0)
             else:
                 patience = 0
                 prev_epoch_loss_list = eval_scores[0][:]
                 save_model(epoch, prev_epoch_loss_list)
-                print("Saved best model till now!")
-            print("")
+                print("Saved best model till now!", flush=True)
+            print("", flush=True)
 
 def save_model(epoch, prev_epoch_loss_list):
     state = {'epoch': epoch + 1, 'state_dict': model.state_dict(),
@@ -244,7 +243,7 @@ def load_checkpoint():
     start_epoch = 0
     prev_epoch_loss_list = [0.] * config.num_exams
     if os.path.isfile(args.save):
-        print("=> loading checkpoint '{}'".format(args.save))
+        print("=> loading checkpoint '{}'".format(args.save), flush=True)
         checkpoint = torch.load(args.save)
         start_epoch = checkpoint['epoch']
         model.load_state_dict(checkpoint['state_dict'])
@@ -253,9 +252,9 @@ def load_checkpoint():
         if 'best_eval_scores' in checkpoint:
             prev_epoch_loss_list = checkpoint['best_eval_scores']
         print("=> loaded checkpoint '{}' (epoch {}) best_eval_scores {}"
-              .format(args.save, checkpoint['epoch'], prev_epoch_loss_list))
+              .format(args.save, checkpoint['epoch'], prev_epoch_loss_list), flush=True)
     else:
-        print("=> no checkpoint found at '{}', starting from scratch".format(args.save))
+        print("=> no checkpoint found at '{}', starting from scratch".format(args.save), flush=True)
 
     return start_epoch, prev_epoch_loss_list
 
@@ -274,8 +273,8 @@ if __name__ == "__main__":
             start_epoch, prev_epoch_loss_list = load_checkpoint()
             train_epoches(start_epoch, training_abstracts, model, config.epochs, teacher_forcing_ratio=1, prev_epoch_loss_list=prev_epoch_loss_list)
         except KeyboardInterrupt:
-            print('-' * 89)
-            print('Exiting from training early')
+            print('-' * 89, flush=True)
+            print('Exiting from training early', flush=True)
     elif args.mode == 1:
         load_checkpoint()
         predictor = Predictor(model, training_abstracts.vectorizer, use_cuda=args.cuda)
