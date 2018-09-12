@@ -93,8 +93,8 @@ class DecoderRNNFB(BaseRNN):
             output_states_attn2, attn2 = self.attention_hidden(output_states, pg_encoder_states)
             output_states_attn = self.fc(output_states_attn1, output_states_attn2)
 
-        intra_attention = self.intra_attention(hidden)
-        output_states_attn = torch.cat(output_states_attn, intra_attention)
+        intra_attention = self.intra_attention(output_states)
+        output_states_attn = torch.cat([output_states_attn, intra_attention], dim=2)
         outputs = self.out1(output_states_attn.view(-1, 2 * self.hidden_size)).\
             view(batch_size, output_size, -1)
         return outputs, output_states_attn, hidden, attn

@@ -39,12 +39,15 @@ class IntraAttention(nn.Module):
     def __init__(self, dim):
         super(IntraAttention, self).__init__()
         self.w_dec_attn = nn.init.normal_(torch.empty(dim, dim))
-        self.softmax = nn.Softmax()
+        self.softmax = nn.Softmax(dim=1)
+        self.linear_out = nn.Linear(dim * 2, dim)
 
     def forward(self, hidden_states):
         input_size = hidden_states.size(1)
         batch_size = hidden_states.size(0)
         hidden_size = hidden_states.size(2)
+        if hidden_states.is_cuda:
+            self.w_dec_attn = self.w_dec_attn.cuda()
         context_vectors = [hidden_states[:, 0, :]]
         for i in range(1, input_size):
             # [ batch_size * hidden_size ] = ( B * H )
@@ -54,7 +57,7 @@ class IntraAttention(nn.Module):
             prev_hidden_states = hidden_states[:, :i, :].transpose(1, 2)
 
             # [ batch_size * hidden_size ] = ( B * H ) -----> ( B, 1, H )
-            _dec_attn = torch.mm(current_hidden_state.squeee(1), self.w_dec_attn).unsqueeze(1)
+            _dec_attn = torch.mm(current_hidden_state.squeeze(1), self.w_dec_attn).unsqueeze(1)
 
             # [ batch_size * 1 * len(decoder_states) ] -----> (B, L)
             # This value corresponds to equation 6 in the paper.
@@ -72,18 +75,18 @@ class IntraAttention(nn.Module):
             # Record the modified context vectors for intra-attention
             context_vectors.append(context)
 
-            # ( No. of Hidden states * batch_size *  batch_size * hidden_size = ( W * B * H )-----> ( B * W * H )
-            context_vectors = torch.stack(context_vectors).t()
+        # ( No. of Hidden states * batch_size *  batch_size * hidden_size = ( W * B * H )-----> ( B * W * H )
+        context_vectors = torch.stack(context_vectors).t()
 
-            # ************************************************  COMBINE THE ATTENTION VECTORS WITH THE HIDDEN LAYERS
+        # ************************************************  COMBINE THE ATTENTION VECTORS WITH THE HIDDEN LAYERS
 
-            # concat -> (batch, out_len, 2*dim) -----> ( B * W * 2H )
-            combined = torch.cat((hidden_states, context_vectors), dim=2)
+        # concat -> (batch, out_len, 2*dim) -----> ( B * W * 2H )
+        combined = torch.cat((hidden_states, context_vectors), dim=2)
 
-            # output -> (batch, out_len, dim)
-            output = F.tanh(self.linear_out(combined.view(-1, 2 * hidden_size))).view(batch_size, -1, hidden_size)
+        # output -> (batch, out_len, dim)
+        output = F.tanh(self.linear_out(combined.view(-1, 2 * hidden_size))).view(batch_size, -1, hidden_size)
 
-            if not output.is_contiguous():
-                output = output.contiguous()
+        if not output.is_contiguous():
+            output = output.contiguous()
 
-            return output, context_vectors
+        return output
