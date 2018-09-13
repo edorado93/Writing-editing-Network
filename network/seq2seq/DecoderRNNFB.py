@@ -41,7 +41,8 @@ class DecoderRNNFB(BaseRNN):
 
     def __init__(self, vocab_size, embedding, max_len, embed_size,
                  sos_id, eos_id, n_layers=1, rnn_cell='gru', bidirectional=False,
-                 input_dropout_p=0, dropout_p=0, labels=None, context_model=None, use_labels=False, use_cuda=False):
+                 input_dropout_p=0, dropout_p=0, labels=None, context_model=None,
+                 use_labels=False, use_cuda=False, use_intra_attention=False):
         hidden_size = embed_size
         if bidirectional:
             hidden_size *= 2
@@ -59,12 +60,13 @@ class DecoderRNNFB(BaseRNN):
         self.sos_id = sos_id
         self.init_input = None
         self.embedding = embedding
-        self.intra_attention = IntraAttention(self.hidden_size)
         self.attention_title = Attention(self.hidden_size)
         self.attention_hidden = Attention(self.hidden_size)
         #self.fc = nn.Linear(self.hidden_size*2, self.hidden_size)
         self.fc = Gate(self.hidden_size)
-        self.out1 = nn.Linear(2 * self.hidden_size, self.output_size)
+        self.use_intra_attention = use_intra_attention
+        self.intra_attention = IntraAttention(self.hidden_size)
+        self.out1 = nn.Linear(2 * self.hidden_size if use_intra_attention else self.hidden_size, self.output_size)
 
         # Structural embedding variables requirement during test time
         self.context_model = context_model
@@ -93,9 +95,11 @@ class DecoderRNNFB(BaseRNN):
             output_states_attn2, attn2 = self.attention_hidden(output_states, pg_encoder_states)
             output_states_attn = self.fc(output_states_attn1, output_states_attn2)
 
-        intra_attention = self.intra_attention(output_states)
-        output_states_attn = torch.cat([output_states_attn, intra_attention], dim=2)
-        outputs = self.out1(output_states_attn.view(-1, 2 * self.hidden_size)).\
+        if self.use_intra_attention:
+            intra_attention = self.intra_attention(output_states)
+            output_states_attn = torch.cat([output_states_attn, intra_attention], dim=2)
+        view_dim = 2 * self.hidden_size if self.use_intra_attention else self.hidden_size
+        outputs = self.out1(output_states_attn.view(-1, view_dim)).\
             view(batch_size, output_size, -1)
         return outputs, output_states_attn, hidden, attn
 
