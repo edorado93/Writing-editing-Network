@@ -38,6 +38,7 @@ def init(args):
     model = manager.get_model()
     config = manager.get_config()
     stat_manager = StatManager(config, is_testing=False)
+    training_abstracts = manager.get_training_data()
 
     optimizer = optim.Adam(model.parameters(), lr=config.lr)
     criterion = nn.CrossEntropyLoss(ignore_index=0)
