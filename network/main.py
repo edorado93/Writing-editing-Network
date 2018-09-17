@@ -157,8 +157,9 @@ def evaluate(validation_dataset, model, teacher_forcing_ratio):
         loss_list, batch_sentences, batch_drafts = train_batch(input_variables, input_lengths,
                                 target_variables, topics, structure_abstracts, model, teacher_forcing_ratio=teacher_forcing_ratio, is_eval=True)
 
-        # Updayte average validation loss
-        validation_loss.update(loss_list[1], input_variables.size(0))
+        # Update average validation loss
+        # The loss is printed for the final abstract
+        validation_loss.update(loss_list[-1], input_variables.size(0))
 
         abstracts.extend(batch_sentences)
         for i in range(config.num_exams):
@@ -199,7 +200,8 @@ def train_epoches(start_epoch, dataset, model, n_epochs, teacher_forcing_ratio, 
                                target_variables, topics, structure_abstracts, model, teacher_forcing_ratio)
 
             # Update the training loss.
-            training_loss.update(loss_list[1], input_variables.size(0))
+            # Training loss is for the final abstract
+            training_loss.update(loss_list[-1], input_variables.size(0))
 
             # Update batch processing times.
             batch_time.update(time.time() - start)
@@ -210,6 +212,10 @@ def train_epoches(start_epoch, dataset, model, n_epochs, teacher_forcing_ratio, 
                 print('PID_{} | epoch {:3d} | {:5d}/{:5d} examples | lr {:02.4f} | ms/batch {:5.2f} | '
                       'loss {:5.2f}'.format(args.local_rank, epoch, batch_idx * config.batch_size, len(train_sampler) if train_sampler else len(train_loader.dataset), optimizer.param_groups[0]['lr'],
                                            batch_time.avg * 1000, training_loss.avg), flush=True)
+                # Reset the meter for the next set of abstracts. Not the next batch, the next
+                # log_interval * batch_size abstracts.
+                if not config.print_running_loss:
+                    training_loss.reset()
 
         if args.local_rank == 0:
             validation_loss, eval_scores = evaluate(validation_abstracts, model, teacher_forcing_ratio)

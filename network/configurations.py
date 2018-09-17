@@ -12,6 +12,7 @@ class CommonConfig(object):
     num_exams = 3
     log_interval = 50
     patience = 5
+    print_running_loss = False
 
     #Common Configuration that is usually played with.
     # Will remain the same unless overridden
