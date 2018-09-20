@@ -36,11 +36,12 @@ class Attention(nn.Module):
         return output, attn
 
 class IntraAttention(nn.Module):
-    def __init__(self, dim):
+    def __init__(self, dim, window_size=3):
         super(IntraAttention, self).__init__()
         self.w_dec_attn = nn.init.normal_(torch.empty(dim, dim))
         self.softmax = nn.Softmax(dim=1)
         self.linear_out = nn.Linear(dim * 2, dim)
+        self.window_size = window_size
 
     def forward(self, hidden_states):
         input_size = hidden_states.size(1)
@@ -54,7 +55,7 @@ class IntraAttention(nn.Module):
             current_hidden_state = hidden_states[:, i, :]
 
             # [ batch_size * len(decoder_states), hidden_size ] = ( B * L * H ) -----> ( B, H, L )
-            prev_hidden_states = hidden_states[:, :i, :].transpose(1, 2)
+            prev_hidden_states = hidden_states[:, max(0, i - self.window_size) :i, :].transpose(1, 2)
 
             # [ batch_size * hidden_size ] = ( B * H ) -----> ( B, 1, H )
             _dec_attn = torch.mm(current_hidden_state.squeeze(1), self.w_dec_attn).unsqueeze(1)

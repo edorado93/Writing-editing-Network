@@ -97,7 +97,9 @@ class ModelManager:
         decoder = DecoderRNNFB(vocab_size, embedding, training_abstracts.abs_len, abstract_encoder_rnn_dim, sos_id=2, eos_id=1,
                                n_layers=config.nlayers, rnn_cell=config.cell, bidirectional=config.bidirectional,
                                input_dropout_p=config.dropout, dropout_p=config.dropout, labels=structure_labels,
-                               use_labels=config.use_labels, context_model=context_encoder, use_cuda=args.cuda)
+                               use_labels=config.use_labels, context_model=context_encoder, use_cuda=args.cuda,
+                               use_intra_attention=config.use_intra_attention,
+                               intra_attention_window_size=config.window_size_attention)
         model = FbSeq2seq(encoder_title, encoder, context_encoder, decoder)
         total_params = sum(x.size()[0] * x.size()[1] if len(x.size()) > 1 else x.size()[0] for x in model.parameters())
         if args.local_rank == 0:

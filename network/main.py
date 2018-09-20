@@ -13,6 +13,7 @@ from pprint import pprint
 import os.path
 sys.path.insert(0,'..')
 from eval import Evaluate
+import random
 
 manager, model, criterion, optimizer, train_sampler, stat_manager = None, None, None, None, None, None
 
@@ -33,6 +34,7 @@ def make_parser():
 
 def init(args):
     cudnn.benchmark = True
+    random.seed(args.seed)
     manager = ModelManager(args)
     train_sampler = None
     model = manager.get_model()
@@ -306,7 +308,7 @@ if __name__ == "__main__":
     elif args.mode == 3:
         cwd = os.getcwd()
         test_data_path = cwd + config.relative_test_path
-        test_abstracts = headline2abstractdataset(test_data_path, vectorizer, args.cuda, max_len=1000,
+        test_abstracts = headline2abstractdataset(test_data_path, training_abstracts.vectorizer, args.cuda, max_len=1000,
                                                         use_topics=config.use_topics,
                                                         use_structure_info=config.use_labels)
         load_checkpoint()
