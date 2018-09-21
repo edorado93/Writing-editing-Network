@@ -8,6 +8,7 @@ from seq2seq.ContextEncoder import ContextEncoder
 import torch
 import torch.nn as nn
 import os
+import json
 
 
 class ModelManager:
@@ -103,6 +104,21 @@ class ModelManager:
         model = FbSeq2seq(encoder_title, encoder, context_encoder, decoder)
         total_params = sum(x.size()[0] * x.size()[1] if len(x.size()) > 1 else x.size()[0] for x in model.parameters())
         if args.local_rank == 0:
+            print("Configuration is as follows", json.dumps({"training data path": config.relative_data_path,
+                                                             "validation data path": config.relative_dev_path,
+                                                            "training batch size": config.batch_size,
+                                                             "validation batch size": config.validation_batch_size,
+                                                             "data parallel": config.dataparallel,
+                                                             "log_interval": config.log_interval,
+                                                             "print_running_loss": config.print_running_loss,
+                                                             "learning rate": config.lr,
+                                                             "pre-trained embeddings location": config.pretrained,
+                                                             "use topics": config.use_topics,
+                                                             "use labels": config.use_labels,
+                                                             "use intra-attention": config.use_intra_attention,
+                                                             "intra-attention window size": config.window_size_attention,
+                                                             "experiment name": config.experiment_name},
+                                                            sort_keys=True, indent=4, separators=(',', ': ')), flush=True)
             print('Model total parameters:', total_params, flush=True)
 
         return model
