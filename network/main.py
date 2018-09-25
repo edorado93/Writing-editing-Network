@@ -10,9 +10,11 @@ from seq2seq.model_manager import ModelManager
 from seq2seq.stat_manager import StatManager, AverageMeter
 from seq2seq.distributed_sequential_sampler import DistributedSequentialSampler
 from pprint import pprint
+from collections import OrderedDict
 import os.path
 sys.path.insert(0,'..')
 from eval import Evaluate
+import random
 
 manager, model, criterion, optimizer, train_sampler, stat_manager = None, None, None, None, None, None
 
@@ -33,6 +35,7 @@ def make_parser():
 
 def init(args):
     cudnn.benchmark = True
+    random.seed(args.seed)
     manager = ModelManager(args)
     train_sampler = None
     model = manager.get_model()
@@ -248,12 +251,19 @@ def save_model(epoch, prev_epoch_loss_list):
 
 def load_checkpoint():
     start_epoch = 0
+    new_state_dict = OrderedDict()
     prev_epoch_loss_list = [0.] * config.num_exams
     if os.path.isfile(args.save):
         print("=> loading checkpoint '{}'".format(args.save), flush=True)
         checkpoint = torch.load(args.save)
         start_epoch = checkpoint['epoch']
-        model.load_state_dict(checkpoint['state_dict'])
+        state_dict = checkpoint['state_dict']
+
+        for k, v in state_dict.items():
+            name = k[7:] if k.startswith("module.") else k
+            new_state_dict[name] = v
+
+        model.load_state_dict(new_state_dict)
         optimizer.load_state_dict(checkpoint['optimizer'])
         # Only for older models trained without this
         if 'best_eval_scores' in checkpoint:
@@ -306,7 +316,7 @@ if __name__ == "__main__":
     elif args.mode == 3:
         cwd = os.getcwd()
         test_data_path = cwd + config.relative_test_path
-        test_abstracts = headline2abstractdataset(test_data_path, vectorizer, args.cuda, max_len=1000,
+        test_abstracts = headline2abstractdataset(test_data_path, training_abstracts.vectorizer, args.cuda, max_len=1000,
                                                         use_topics=config.use_topics,
                                                         use_structure_info=config.use_labels)
         load_checkpoint()
