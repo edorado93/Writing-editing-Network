@@ -10,6 +10,7 @@ from seq2seq.model_manager import ModelManager
 from seq2seq.stat_manager import StatManager, AverageMeter
 from seq2seq.distributed_sequential_sampler import DistributedSequentialSampler
 from pprint import pprint
+from collections import OrderedDict
 import os.path
 sys.path.insert(0,'..')
 from eval import Evaluate
@@ -250,12 +251,19 @@ def save_model(epoch, prev_epoch_loss_list):
 
 def load_checkpoint():
     start_epoch = 0
+    new_state_dict = OrderedDict()
     prev_epoch_loss_list = [0.] * config.num_exams
     if os.path.isfile(args.save):
         print("=> loading checkpoint '{}'".format(args.save), flush=True)
         checkpoint = torch.load(args.save)
         start_epoch = checkpoint['epoch']
-        model.load_state_dict(checkpoint['state_dict'])
+        state_dict = checkpoint['state_dict']
+
+        for k, v in state_dict.items():
+            name = k[7:] if k.startswith("module.") else k
+            new_state_dict[name] = v
+
+        model.load_state_dict(new_state_dict)
         optimizer.load_state_dict(checkpoint['optimizer'])
         # Only for older models trained without this
         if 'best_eval_scores' in checkpoint:
