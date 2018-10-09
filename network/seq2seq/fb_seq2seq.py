@@ -1,6 +1,6 @@
 import torch.nn as nn
 import torch.nn.functional as F
-
+import torch
 
 class FbSeq2seq(nn.Module):
 
@@ -52,5 +52,7 @@ class FbSeq2seq(nn.Module):
         decoder_outputs_reshaped = result[0].view(-1, self.encoder.embedding.num_embeddings)
         target_variables_reshaped = target_variable[:, 1:].contiguous().view(-1)
         loss = self.criterion(decoder_outputs_reshaped, target_variables_reshaped)
+        # Current output of the model. This will be the previously generated abstract for the model.
+        prev_generated_seq = torch.squeeze(torch.topk(result[0], 1, dim=2)[1]).view(-1, result[0].size(1))
 
-        return decoder_outputs_reshaped, target_variables_reshaped, result[2], loss.unsqueeze(0)
+        return loss.unsqueeze(0), prev_generated_seq, result[2]

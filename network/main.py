@@ -99,24 +99,6 @@ def _mask(prev_generated_seq):
         mask = mask.cuda()
     return prev_generated_seq.data.masked_fill_(mask, 0)
 
-def get_per_gpu_data(decoder_outputs, abstract_length):
-    number_of_gpus = torch.cuda.device_count() if config.data_parallel else 1
-    per_gpu_batch_size = config.batch_size // number_of_gpus
-    for i in range(number_of_gpus):
-        start = i * abstract_length * per_gpu_batch_size
-        decoder_outputs_slice = decoder_outputs[start: start + abstract_length * per_gpu_batch_size]
-        yield decoder_outputs_slice.reshape(per_gpu_batch_size, abstract_length, -1)
-
-def get_abstract_draft_from_decoder_outputs(decoder_outputs, abstract_length):
-    prev_generated_seq = None
-    for decoder_outs_reshaped in get_per_gpu_data(decoder_outputs, abstract_length):
-        sequence = torch.squeeze(torch.topk(decoder_outs_reshaped, 1, dim=2)[1]).view(-1, decoder_outs_reshaped.size(1))
-        if prev_generated_seq is None:
-            prev_generated_seq = sequence
-        else:
-            prev_generated_seq = torch.cat([prev_generated_seq, sequence])
-    return prev_generated_seq
-
 def train_batch(input_variable, input_lengths, target_variable, topics, structure_abstracts, model,
                 teacher_forcing_ratio, is_eval=False):
     loss_list = []
@@ -131,7 +113,7 @@ def train_batch(input_variable, input_lengths, target_variable, topics, structur
         sentences.append(" ".join([str(tok.item()) for tok in t if tok.item() != 0 and tok.item() != 1 and tok.item() != 2]))
 
     for i in range(config.num_exams):
-        decoder_outputs_reshaped, target_variable_reshaped, other, lossi = \
+        lossi, prev_generated_seq, other = \
             model(input_variable, prev_generated_seq, input_lengths,
                    target_variable, teacher_forcing_ratio, topics=topics, structure_abstracts=structure_abstracts)
 
@@ -146,16 +128,12 @@ def train_batch(input_variable, input_lengths, target_variable, topics, structur
             torch.nn.utils.clip_grad_norm_(model.parameters(), config.max_grad_norm)
             optimizer.step()
 
-        # Current output of the model. This will be the previously generated abstract for the model.
-        prev_generated_seq = get_abstract_draft_from_decoder_outputs(abstract_length=target_variable.shape[1] - 1,
-                                                                     decoder_outputs=decoder_outputs_reshaped)
-
         # If we are in eval mode, obtain words for generated sequences. This will be used for the BLEU score.
         if is_eval:
             for p in prev_generated_seq:
                 drafts[i].append(" ".join([str(tok.item()) for tok in p if tok.item() != 0 and tok.item() != 1 and tok.item() != 2]))
         prev_generated_seq = _mask(prev_generated_seq)
-        del lossi, target_variable_reshaped, decoder_outputs_reshaped
+        del lossi
 
     if is_eval:
         return loss_list, sentences, drafts
