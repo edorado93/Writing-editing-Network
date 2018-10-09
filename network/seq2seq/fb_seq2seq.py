@@ -11,6 +11,7 @@ class FbSeq2seq(nn.Module):
         self.encoder = encoder
         self.decoder = decoder
         self.decode_function = decode_function
+        self.criterion = nn.CrossEntropyLoss(ignore_index=0)
 
     def flatten_parameters(self):
         self.encoder.rnn.flatten_parameters()
@@ -47,4 +48,9 @@ class FbSeq2seq(nn.Module):
                               teacher_forcing_ratio=teacher_forcing_ratio,
                               topical_embedding=topical_embedding,
                               structural_embedding=structural_embedding)
-        return result
+
+        decoder_outputs_reshaped = result[0].view(-1, self.encoder.embedding.num_embeddings)
+        target_variables_reshaped = target_variable[:, 1:].contiguous().view(-1)
+        loss = self.criterion(decoder_outputs_reshaped, target_variables_reshaped)
+
+        return decoder_outputs_reshaped, target_variables_reshaped, result[2], loss.unsqueeze(0)
