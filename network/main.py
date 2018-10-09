@@ -139,7 +139,10 @@ def train_batch(input_variable, input_lengths, target_variable, topics, structur
         loss_list.append(lossi.item())
         if not is_eval:
             model.zero_grad()
-            lossi.backward(retain_graph=True)
+
+            # We don't need retain_graph here. The computation graph
+            # is computed again and again for every draft. Hence no need to retain.
+            lossi.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), config.max_grad_norm)
             optimizer.step()
 
