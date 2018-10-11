@@ -11,7 +11,6 @@ class CommonConfig(object):
     num_exams = 3
     log_interval = 1000
     predict_right_after = 3
-    patience = 5
     advantage_clipping = 5
 
 class SmallDatasetWithTopics(CommonConfig):

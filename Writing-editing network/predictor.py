@@ -121,13 +121,13 @@ class Predictor(object):
         for i in range(num_exams):
             cands.append({})
         i = 0
-        for batch_idx, (source, target, input_lengths) in enumerate(test_loader):
+        for batch_idx, (source, target, input_lengths, t) in enumerate(test_loader):
             for j in range(source.size(0)):
                 i += 1
                 ref = self.prepare_for_bleu(target[j])
                 refs[i] = [ref]
             input_variables = source
-            input_lengths = input_lengths.tolist()
+            #input_lengths = input_lengths.tolist()
             prev_generated_seq = None
             for k in range(num_exams):
                 _, _, other = \

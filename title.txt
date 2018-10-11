@@ -1,0 +1,4 @@
+learning features by watching objects move
+an effective training method for deep convolutional neural network
+a multifaceted evaluation of neural versus phrase-based machine translation for 9 language directions
+the cross-depiction problem : computer vision algorithms for recognizing objects in artwork and in photographs

@@ -35,6 +35,8 @@ parser.add_argument('--gamma', type=float,
                     help="value for gamma - critic reward discount value", default=0.8835659)
 parser.add_argument('--experiment_name', type=str,
                     help="experiment variable name")
+parser.add_argument('--patience', type=int,
+                    help="no of epochs after which you stop if there is no improvement")
 args = parser.parse_args()
 config = configurations.get_conf(args.conf)
 writer = SummaryWriter("saved_runs/" + args.experiment_name)
@@ -394,8 +396,8 @@ def train_epoches(dataset, model, n_epochs, teacher_forcing_ratio):
         print('| end of epoch {:3d} | dis_loss {:5.2f} | valid loss {:5.2f},{:5.2f},{:5.2f} | time: {:5.2f}s'.format(epoch, (total_dis/n_batch), validation_loss[0], validation_loss[1], validation_loss[2],(time.time() - epoch_start_time)), flush=True)
         if prev_epoch_loss_list[:-1] < validation_loss[:-1]:
             patience += 1
-            if patience == config.patience:
-                print("Breaking off now. Performance has not improved on validation set since the last",config.patience,"epochs")
+            if patience == args.patience:
+                print("Breaking off now. Performance has not improved on validation set since the last",args.patience,"epochs")
                 break
         else:
             print("Saved best model till now!")
