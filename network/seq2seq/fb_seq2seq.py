@@ -49,10 +49,13 @@ class FbSeq2seq(nn.Module):
                               topical_embedding=topical_embedding,
                               structural_embedding=structural_embedding)
 
-        decoder_outputs_reshaped = result[0].view(-1, self.encoder.embedding.num_embeddings)
-        target_variables_reshaped = target_variable[:, 1:].contiguous().view(-1)
-        loss = self.criterion(decoder_outputs_reshaped, target_variables_reshaped)
+        loss = None
+        if target_variable is not None:
+            decoder_outputs_reshaped = result[0].view(-1, self.encoder.embedding.num_embeddings)
+            target_variables_reshaped = target_variable[:, 1:].contiguous().view(-1)
+            loss = self.criterion(decoder_outputs_reshaped, target_variables_reshaped)
+            loss = loss.unsqueeze(0)
         # Current output of the model. This will be the previously generated abstract for the model.
         prev_generated_seq = torch.squeeze(torch.topk(result[0], 1, dim=2)[1]).view(-1, result[0].size(1))
 
-        return loss.unsqueeze(0), prev_generated_seq, result[2]
+        return loss, prev_generated_seq, result[2]
