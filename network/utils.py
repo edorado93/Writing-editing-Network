@@ -46,6 +46,18 @@ class Vectorizer:
         vec = [self.context_vectorizer[t] if t in self.context_vectorizer else self.context_vectorizer["algorithm"] for t in topics]
         return vec
 
+    def source_to_tokens(self, src_seq):
+        text = []
+        src_seq = src_seq.strip().split(' ')
+        for tok in src_seq:
+            if tok in self.word2idx:
+                tok = self.word2idx[tok]
+            else:
+                # UNK token
+                tok = 3
+            text.append(torch.LongTensor([tok]).view(1,1))
+        return text
+
     def _build_vocabulary(self, corpus, template):
         if not template:
             vocabulary = Counter(word for document in corpus for sent in document for word in sent)

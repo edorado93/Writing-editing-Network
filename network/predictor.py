@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+import json
 
 
 class Predictor(object):
@@ -159,6 +160,18 @@ class Predictor(object):
         sent=[x.item() for x in sentence if x.item() != 0 and x.item() != 1 and x.item() != 2]
         sent = ' '.join([str(x) for x in sent])
         return sent
+
+    def evaluate_abstracts(self, filename, vectorizer):
+        refs = {}
+        cand = {}
+        with open(filename) as f:
+            for i, line in enumerate(f):
+                j = json.loads(line.strip())
+                original_abstract = vectorizer.source_to_tokens(j["original"])
+                generated_abstract = vectorizer.source_to_tokens(j["generated"])
+                refs[i] = [self.prepare_for_bleu(original_abstract)]
+                cand[i] = self.prepare_for_bleu(generated_abstract)
+        return cand, refs
 
     def predict_seq_title(self, title, sec_seq, num_exams):
         """ Make prediction given `src_seq` as input.
