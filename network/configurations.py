@@ -3,7 +3,8 @@ class CommonConfig(object):
     nlayers = 1
     batch_size = 20
     validation_batch_size = 32
-    dataparallel = False
+    data_parallel = True
+    distributed_data_parallel = False
     dropout = 0
     epochs = 20
     bidirectional = True

@@ -14,7 +14,7 @@ from collections import OrderedDict
 import os.path
 sys.path.insert(0,'..')
 from eval import Evaluate
-import random, json
+import random, numpy, json
 
 manager, model, criterion, optimizer, train_sampler, stat_manager = None, None, None, None, None, None
 
@@ -35,9 +35,32 @@ def make_parser():
 
     return parser.parse_known_args()
 
+def setup_distributed_parallelization(model, criterion, training_abstracts, config):
+    assert args.cuda
+    assert torch.cuda.device_count() > 1
+    torch.cuda.set_device(args.local_rank)
+    model = model.cuda()
+    criterion = criterion.cuda()
+    torch.distributed.init_process_group(backend='nccl', init_method='env://')
+    model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank],
+                                                      output_device=args.local_rank)
+    train_sampler = DistributedSequentialSampler(training_abstracts)
+    config.batch_size //= torch.cuda.device_count()
+    return model, criterion, train_sampler
+
+def setup_data_parallel(model, criterion):
+    assert args.cuda
+    assert torch.cuda.device_count() > 1
+    model = nn.DataParallel(model)
+    model = model.cuda()
+    criterion = criterion.cuda()
+    return model, criterion
+
 def init(args):
-    cudnn.benchmark = True
+    cudnn.deterministic = True
+    cudnn.benchmark = False
     random.seed(args.seed)
+    numpy.random.seed(args.seed)
     manager = ModelManager(args)
     train_sampler = None
     model = manager.get_model()
@@ -47,17 +70,17 @@ def init(args):
 
     optimizer = optim.Adam(model.parameters(), lr=config.lr)
     criterion = nn.CrossEntropyLoss(ignore_index=0)
-    if args.cuda:
-        torch.cuda.set_device(args.local_rank)
+    assert not (config.data_parallel and config.distributed_data_parallel)
+
+    if config.data_parallel:
+        model, criterion = setup_data_parallel(model, criterion)
+
+    if config.distributed_data_parallel:
+        model, criterion, train_sampler = setup_distributed_parallelization(model, criterion, training_abstracts, config)
+
+    if not config.data_parallel and not config.distributed_data_parallel:
         model = model.cuda()
         criterion = criterion.cuda()
-
-    if config.dataparallel and torch.cuda.device_count() > 1:
-        torch.distributed.init_process_group(backend='nccl', init_method='env://')
-        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank],
-                                                          output_device=args.local_rank)
-        train_sampler = DistributedSequentialSampler(training_abstracts)
-        config.batch_size //= torch.cuda.device_count()
 
     return manager, model, criterion, optimizer, train_sampler, stat_manager
 
@@ -81,11 +104,9 @@ def _mask(prev_generated_seq):
 
 def train_batch(input_variable, input_lengths, target_variable, topics, structure_abstracts, model,
                 teacher_forcing_ratio, is_eval=False):
-    vocab_size = len(training_abstracts.vectorizer.word2idx)
     loss_list = []
     # Forward propagation
     prev_generated_seq = None
-    target_variable_reshaped = target_variable[:, 1:].contiguous().view(-1)
 
     # Data structures used to store sentences for measuring BLEU scores.
     sentences = []
@@ -95,27 +116,27 @@ def train_batch(input_variable, input_lengths, target_variable, topics, structur
         sentences.append(" ".join([str(tok.item()) for tok in t if tok.item() != 0 and tok.item() != 1 and tok.item() != 2]))
 
     for i in range(config.num_exams):
-        decoder_outputs, _, other = \
+        lossi, prev_generated_seq, other = \
             model(input_variable, prev_generated_seq, input_lengths,
                    target_variable, teacher_forcing_ratio, topics=topics, structure_abstracts=structure_abstracts)
 
-        decoder_outputs_reshaped = decoder_outputs.view(-1, vocab_size)
-        lossi = criterion(decoder_outputs_reshaped, target_variable_reshaped)
+        lossi = torch.mean(lossi)
         loss_list.append(lossi.item())
         if not is_eval:
             model.zero_grad()
-            lossi.backward(retain_graph=True)
+
+            # We don't need retain_graph here. The computation graph
+            # is computed again and again for every draft. Hence no need to retain.
+            lossi.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), config.max_grad_norm)
             optimizer.step()
-
-        # Current output of the model. This will be the previously generated abstract for the model.
-        prev_generated_seq = torch.squeeze(torch.topk(decoder_outputs, 1, dim=2)[1]).view(-1, decoder_outputs.size(1))
 
         # If we are in eval mode, obtain words for generated sequences. This will be used for the BLEU score.
         if is_eval:
             for p in prev_generated_seq:
                 drafts[i].append(" ".join([str(tok.item()) for tok in p if tok.item() != 0 and tok.item() != 1 and tok.item() != 2]))
         prev_generated_seq = _mask(prev_generated_seq)
+        del lossi
 
     if is_eval:
         return loss_list, sentences, drafts
@@ -262,7 +283,7 @@ def load_checkpoint():
         state_dict = checkpoint['state_dict']
 
         for k, v in state_dict.items():
-            name = k[7:] if not config.dataparallel and k.startswith("module.") else k
+            name = k[7:] if not config.data_parallel and k.startswith("module.") else k
             new_state_dict[name] = v
 
         model.load_state_dict(new_state_dict)
