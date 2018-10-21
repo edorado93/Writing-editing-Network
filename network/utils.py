@@ -3,8 +3,28 @@ import torch
 from torch.utils.data import Dataset
 from collections import Counter
 from gensim.models import KeyedVectors
-import re
+import subprocess
 import json
+
+def get_gpu_memory_map():
+    """Get the current gpu usage.
+    https://discuss.pytorch.org/t/access-gpu-memory-usage-in-pytorch/3192/4
+
+    Returns
+    -------
+    usage: dict
+        Keys are device ids as integers.
+        Values are memory usage as integers in MB.
+    """
+    result = subprocess.check_output(
+        [
+            'nvidia-smi', '--query-gpu=memory.used',
+            '--format=csv,nounits,noheader'
+        ], encoding='utf-8')
+    # Convert lines into a dictionary
+    gpu_memory = [int(x) for x in result.strip().split('\n')][:torch.cuda.device_count()]
+    gpu_memory_map = dict(zip(range(torch.cuda.device_count()), gpu_memory))
+    return gpu_memory_map
 
 #provide pretrained embeddings for text
 def load_embeddings(pytorch_embedding, word2idx, filename, embedding_size):
