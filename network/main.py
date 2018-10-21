@@ -15,7 +15,7 @@ import os.path
 sys.path.insert(0,'..')
 from eval import Evaluate
 import random
-from utils import get_gpu_memory_map
+import random, numpy
 
 manager, model, criterion, optimizer, train_sampler, stat_manager = None, None, None, None, None, None
 
@@ -56,8 +56,10 @@ def setup_data_parallel(model, criterion):
     return model, criterion
 
 def init(args):
-    cudnn.benchmark = True
+    cudnn.deterministic = True
+    cudnn.benchmark = False
     random.seed(args.seed)
+    numpy.random.seed(args.seed)
     manager = ModelManager(args)
     train_sampler = None
     model = manager.get_model()
