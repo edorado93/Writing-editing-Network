@@ -3,7 +3,7 @@ class CommonConfig(object):
     nlayers = 1
     batch_size = 20
     validation_batch_size = 32
-    data_parallel = True
+    data_parallel = False
     distributed_data_parallel = False
     dropout = 0
     epochs = 20
@@ -23,7 +23,7 @@ class CommonConfig(object):
     pretrained = None
     use_topics = False
     use_labels = False
-    use_intra_attention = True
+    use_intra_attention = False
     window_size_attention = 3
 
 class ThreeMostRelevantDataset(CommonConfig):
