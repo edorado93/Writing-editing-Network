@@ -14,8 +14,7 @@ from collections import OrderedDict
 import os.path
 sys.path.insert(0,'..')
 from eval import Evaluate
-import random
-import random, numpy
+import random, numpy, json
 
 manager, model, criterion, optimizer, train_sampler, stat_manager = None, None, None, None, None, None
 
@@ -31,6 +30,8 @@ def make_parser():
                         help="configuration to load for the training")
     parser.add_argument("--local_rank", type=int, default=0,
                         help="The local rank of the process provided by the distributed launch utility, if being used")
+    parser.add_argument("--paf", type=str,
+                        help="Polished abstracts filepath")
 
     return parser.parse_known_args()
 
@@ -345,7 +346,7 @@ if __name__ == "__main__":
         test_loader = DataLoader(test_abstracts, config.batch_size)
         eval_f = Evaluate()
         num_exams = 3
-        predictor = Predictor(model, validation_abstracts.vectorizer, use_cuda=args.cuda)
+        predictor = Predictor(model, training_abstracts.vectorizer, use_cuda=args.cuda)
         print("Start Evaluating")
         print("Test Data: ", len(validation_abstracts))
         cand, ref = predictor.preeval_batch(test_loader, len(validation_abstracts), num_exams, use_topics=config.use_topics, use_labels=config.use_labels)
@@ -359,5 +360,33 @@ if __name__ == "__main__":
             for j in range(3):
                 scores[j].append(final_scores[fields[j]])
         pprint(scores)
-        with open('figure.pkl', 'wb') as f:
-            pickle.dump((fields, scores), f)
+        with open("test_generated.txt", "w") as f:
+            for o, g in zip(ref, cand[1]):
+
+                # Ref is a dictionary of lists where the list contains just one element
+                reference = ref[o][0]
+
+                # Candidate has 3 different list elements which themselves are dictionaries.
+                # We just need the second level abstracts i.s. cand[1]
+                candidate = cand[1][g]
+
+                org = " ".join(training_abstracts.vectorizer.idx2word[int(w)] for w in reference.split())
+                gen = " ".join(training_abstracts.vectorizer.idx2word[int(w)] for w in candidate.split())
+                f.write(json.dumps({"original": org, "generated": gen}))
+                f.write("\n")
+    elif args.mode == 4:
+        num_exams = 1
+        load_checkpoint()
+        eval_f = Evaluate()
+        print("Start Evaluating Polished Abstracts")
+        predictor = Predictor(model, training_abstracts.vectorizer, use_cuda=args.cuda)
+        cand, ref = predictor.evaluate_abstracts(args.paf, training_abstracts.vectorizer)
+        print("Data: ", len(ref))
+        scores = []
+        fields = ["Bleu_4", "METEOR", "ROUGE_L"]
+        for i in range(3):
+            scores.append([])
+        final_scores = eval_f.evaluate(live=True, cand=cand, ref=ref)
+        for j in range(3):
+            scores[j].append(final_scores[fields[j]])
+        pprint(scores)
