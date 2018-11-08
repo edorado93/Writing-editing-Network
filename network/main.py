@@ -59,7 +59,9 @@ def setup_data_parallel(model, criterion):
 def init(args):
     cudnn.deterministic = True
     cudnn.benchmark = False
-    random.seed(args.seed)
+    # Only fix the seed during training. During test eval, let it be true random
+    if args.mode != 3:
+        random.seed(args.seed)
     numpy.random.seed(args.seed)
     manager = ModelManager(args)
     train_sampler = None
@@ -360,7 +362,7 @@ if __name__ == "__main__":
             for j in range(3):
                 scores[j].append(final_scores[fields[j]])
         pprint(scores)
-        with open("test_generated.txt", "w") as f:
+        with open("BLEU-4={}_generated_.txt".format(scores[0][0]), "w") as f:
             for o, g in zip(ref, cand[1]):
 
                 # Ref is a dictionary of lists where the list contains just one element
