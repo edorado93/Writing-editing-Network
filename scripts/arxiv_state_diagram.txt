@@ -1,11 +1,9 @@
-introduction --> introduction 0.35080551262781295
-introduction --> body 0.6124012955945551
-introduction --> conclusion 0.032961449711031605
-body --> body 0.7191453818920432
-body --> conclusion 0.20525451559934318
-conclusion --> conclusion 0.33114782260142583
-
-
-
-
-
+introduction --> introduction 0.3374788742743772
+introduction --> body 0.6224557278271732
+introduction --> conclusion 0.04006539789844955
+body --> introduction 0.05277928742616334
+body --> body 0.715335750750617
+body --> conclusion 0.2318849618232197
+conclusion --> introduction 0.005023225667062764
+conclusion --> body 0.6417305822620719
+conclusion --> conclusion 0.3532461920708653
