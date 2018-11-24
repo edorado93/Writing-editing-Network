@@ -362,15 +362,26 @@ if __name__ == "__main__":
             for j in range(3):
                 scores[j].append(final_scores[fields[j]])
         pprint(scores)
-        with open("BLEU-4={}_generated_.txt".format(scores[0][0]), "w") as f:
-            for o, g in zip(ref, cand[1]):
+
+        # Written in a verbose manner to highlight that scores[0] represents BLEU score
+        BLEU_abstract_1 = scores[0][0]
+        BLEU_abstract_2 = scores[0][1]
+        if BLEU_abstract_1 > BLEU_abstract_2:
+            print_candidate = cand[0]
+            best_bleu = BLEU_abstract_1
+        else:
+            print_candidate = cand[1]
+            best_bleu = BLEU_abstract_2
+
+        with open("BLEU-4={}_generated.txt".format(best_bleu), "w") as f:
+            for o, g in zip(ref, print_candidate):
 
                 # Ref is a dictionary of lists where the list contains just one element
                 reference = ref[o][0]
 
                 # Candidate has 3 different list elements which themselves are dictionaries.
                 # We just need the second level abstracts i.s. cand[1]
-                candidate = cand[1][g]
+                candidate = print_candidate[g]
 
                 org = " ".join(training_abstracts.vectorizer.idx2word[int(w)] for w in reference.split())
                 gen = " ".join(training_abstracts.vectorizer.idx2word[int(w)] for w in candidate.split())
