@@ -74,15 +74,17 @@ def init(args):
     criterion = nn.CrossEntropyLoss(ignore_index=0)
     assert not (config.data_parallel and config.distributed_data_parallel)
 
-    if config.data_parallel:
-        model, criterion = setup_data_parallel(model, criterion)
+    # Only setup data parallel or distributed data parallel if cuda has been specified by the user.
+    if args.cuda:
+        if config.data_parallel:
+            model, criterion = setup_data_parallel(model, criterion)
 
-    if config.distributed_data_parallel:
-        model, criterion, train_sampler = setup_distributed_parallelization(model, criterion, training_abstracts, config)
+        if config.distributed_data_parallel:
+            model, criterion, train_sampler = setup_distributed_parallelization(model, criterion, training_abstracts, config)
 
-    if not config.data_parallel and not config.distributed_data_parallel:
-        model = model.cuda()
-        criterion = criterion.cuda()
+        if not config.data_parallel and not config.distributed_data_parallel:
+            model = model.cuda()
+            criterion = criterion.cuda()
 
     return manager, model, criterion, optimizer, train_sampler, stat_manager
 
