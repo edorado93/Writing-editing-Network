@@ -364,14 +364,13 @@ if __name__ == "__main__":
         pprint(scores)
 
         # Written in a verbose manner to highlight that scores[0] represents BLEU score
-        BLEU_abstract_1 = scores[0][0]
-        BLEU_abstract_2 = scores[0][1]
-        if BLEU_abstract_1 > BLEU_abstract_2:
+        best_bleu = max(scores[0])
+        if best_bleu == scores[0][0]:
             print_candidate = cand[0]
-            best_bleu = BLEU_abstract_1
-        else:
+        elif best_bleu == scores[0][1]:
             print_candidate = cand[1]
-            best_bleu = BLEU_abstract_2
+        else:
+            print_candidate = cand[2]
 
         with open("BLEU-4={}_generated.txt".format(best_bleu), "w") as f:
             for o, g in zip(ref, print_candidate):
