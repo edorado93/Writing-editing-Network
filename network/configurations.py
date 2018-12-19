@@ -26,32 +26,35 @@ class CommonConfig(object):
     use_intra_attention = False
     window_size_attention = 3
 
-class Dataset(CommonConfig):
+class ACLDataset(CommonConfig):
+    relative_data_path = '/data/acl/train.dat'
+    relative_dev_path = '/data/acl/dev.dat'
+
+class XMLADataset(CommonConfig):
     relative_data_path = '/data/structurally-labelled-data/tf-idf/train.dat'
     relative_dev_path = '/data/structurally-labelled-data/tf-idf/dev.dat'
-    relative_test_path = '/data/structurally-labelled-data/tf-idf/test.dat'
 
-class BaselineConfig(Dataset):
+class BaselineConfig(XMLADataset):
     experiment_name = "lg-lr-0.0001"
     pretrained = 'embeddings/complete-512.vec'
 
-class TopicConfig(Dataset):
+class TopicConfig(XMLADataset):
     use_topics = True
     pretrained = 'embeddings/complete-512.vec'
     experiment_name = "lg-with-topics-lr-0.0001"
 
-class LabelConfig(Dataset):
+class LabelConfig(XMLADataset):
     use_labels = True
     pretrained = 'embeddings/complete-512.vec'
     experiment_name = "lg-with-labels-lr-0.0001"
 
-class Label_Topics_Config(Dataset):
+class Label_Topics_Config(XMLADataset):
     use_topics = True
     use_labels = True
     pretrained = 'embeddings/complete-512.vec'
     experiment_name = "lg-with-labels-and-topics-lr-0.0001"
 
-class Labels_Topics_IntraAttention_Config(Dataset):
+class Labels_Topics_IntraAttention_Config(XMLADataset):
     use_topics = True
     use_labels = True
     use_intra_attention = True
