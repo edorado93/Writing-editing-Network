@@ -119,6 +119,7 @@ class Predictor(object):
 
     def preeval_batch(self, test_loader, abs_len, num_exams, use_topics=False, use_labels=False):
         torch.set_grad_enabled(False)
+        org = {}
         refs = {}
         cands = []
         for i in range(num_exams):
@@ -138,6 +139,7 @@ class Predictor(object):
                 i += 1
                 ref = self.prepare_for_bleu(target_variables[j])
                 refs[i] = [ref]
+                org[i] = data[-1][j]
             prev_generated_seq = None
             for k in range(num_exams):
                 _, _, other = \
@@ -153,7 +155,7 @@ class Predictor(object):
                     structure_abstracts = torch.stack(other['gen_labels'], 1).squeeze(2)
             if i % 100 == 0:
                 print("Percentages:  %.4f" % (i/float(abs_len)))
-        return cands, refs
+        return cands, refs, org
 
 
     def prepare_for_bleu(self, sentence):

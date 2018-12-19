@@ -142,6 +142,7 @@ class headline2abstractdataset(Dataset):
         self.abs_len = 0
         self.max_len = max_len
         self.max_context_length = 1
+        self.untokenized_original = {}
         self.vectorizer = vectorizer
         self.corpus, self.topics_corpus, self.abstract_structures = self._read_corpus(path)
         self.data = self._vectorize_corpus()
@@ -176,16 +177,16 @@ class headline2abstractdataset(Dataset):
                 target.append(1)#word2idx['<EOS>'] = 1
                 self.abs_len = len(target)
 
-            old.append((source[1:-1], target, contextual_dictionary))
+            old.append((source[1:-1], target, contextual_dictionary, i))
         old.sort(key=lambda x: len(x[0]), reverse = True)
         corpus = []
-        for source, target, contextual_dictionary in old:
+        for source, target, contextual_dictionary, original_index in old:
 
             if self.use_topics:
                 contextual_dictionary["topics"] = self.pad_sentence_vector(contextual_dictionary["topics"], self.max_context_length, pad_value=self.vectorizer.context_vectorizer['algorithm'])
             if self.use_structure_info:
                 contextual_dictionary["structure"] = self.pad_sentence_vector(contextual_dictionary["structure"], self.abs_len, pad_value=3)
-            team = [len(source), len(target), self.pad_sentence_vector(source, self.head_len), self.pad_sentence_vector(target, self.abs_len), contextual_dictionary]
+            team = [len(source), len(target), self.pad_sentence_vector(source, self.head_len), self.pad_sentence_vector(target, self.abs_len), contextual_dictionary, original_index]
             corpus.append(team)
         self.data = corpus
 
@@ -200,6 +201,7 @@ class headline2abstractdataset(Dataset):
                 j = json.loads(line)
                 headlines.append(j["title"])
                 abstracts.append(j["abstract"])
+                self.untokenized_original[i] = (j["title"], j["abstract"])
                 if "topics" in j:
                     topics.append(j["topics"])
                 if "labels" in j:
@@ -264,9 +266,10 @@ class headline2abstractdataset(Dataset):
         return structure
 
     def __getitem__(self, index):
-        len_s, len_t, source, target, context_dictionary = self.data[index]
+        len_s, len_t, source, target, context_dictionary, original_index = self.data[index]
         source = torch.LongTensor(source).cuda() if self.USE_CUDA else torch.LongTensor(source)
         target = torch.LongTensor(target).cuda() if self.USE_CUDA else torch.LongTensor(target)
+        org_index = torch.LongTensor([original_index]).cuda() if self.USE_CUDA else torch.LongTensor([original_index])
         ret = [source, target, len_s]
         if self.use_topics:
             topics = (torch.LongTensor(context_dictionary["topics"]).cuda() if self.USE_CUDA else torch.LongTensor(context_dictionary["topics"])) if self.use_topics else None
@@ -274,6 +277,7 @@ class headline2abstractdataset(Dataset):
         if self.use_structure_info:
             structure_abstracts = (torch.LongTensor(context_dictionary["structure"]).cuda() if self.USE_CUDA else torch.LongTensor(context_dictionary["structure"])) if self.use_structure_info else None
             ret.append(structure_abstracts)
+        ret.append(org_index)
         return ret
 
     def __len__(self):

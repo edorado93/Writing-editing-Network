@@ -353,7 +353,7 @@ if __name__ == "__main__":
         predictor = Predictor(model, training_abstracts.vectorizer, use_cuda=args.cuda)
         print("Start Evaluating")
         print("Test Data: ", len(validation_abstracts))
-        cand, ref = predictor.preeval_batch(test_loader, len(validation_abstracts), num_exams, use_topics=config.use_topics, use_labels=config.use_labels)
+        cand, ref, org = predictor.preeval_batch(test_loader, len(validation_abstracts), num_exams, use_topics=config.use_topics, use_labels=config.use_labels)
         scores = []
         fields = ["Bleu_4", "METEOR", "ROUGE_L"]
         for i in range(3):
@@ -375,18 +375,18 @@ if __name__ == "__main__":
             print_candidate = cand[2]
 
         with open("BLEU-4={}_generated.txt".format(best_bleu), "w") as f:
-            for o, g in zip(ref, print_candidate):
+            for o, g in zip(org, print_candidate):
 
                 # Ref is a dictionary of lists where the list contains just one element
-                reference = ref[o][0]
+                ref_abstract = test_abstracts.untokenized_original[org[o].item()][1]
+                ref_title = test_abstracts.untokenized_original[org[o].item()][0]
 
                 # Candidate has 3 different list elements which themselves are dictionaries.
                 # We just need the second level abstracts i.s. cand[1]
                 candidate = print_candidate[g]
 
-                org = " ".join(training_abstracts.vectorizer.idx2word[int(w)] for w in reference.split())
                 gen = " ".join(training_abstracts.vectorizer.idx2word[int(w)] for w in candidate.split())
-                f.write(json.dumps({"original": org, "generated": gen}))
+                f.write(json.dumps({"title": ref_title,"original": ref_abstract, "generated": gen}))
                 f.write("\n")
     elif args.mode == 4:
         num_exams = 1
