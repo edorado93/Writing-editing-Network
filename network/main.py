@@ -32,6 +32,8 @@ def make_parser():
                         help="The local rank of the process provided by the distributed launch utility, if being used")
     parser.add_argument("--paf", type=str,
                         help="Polished abstracts filepath")
+    parser.add_argument("--dataset", type=str,
+                        help="The data set to run the model configuration on. Provide one of [xmla, acl]")
 
     return parser.parse_known_args()
 

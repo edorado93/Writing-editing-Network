@@ -17,7 +17,7 @@ class ModelManager:
         self.args = args
 
         # Model Configuration to execute.
-        self.config = configurations.get_conf(args.conf)
+        self.config = configurations.init(args.dataset)[args.conf]
         if args.local_rank == 0:
             print("Config is", args.conf)
 

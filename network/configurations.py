@@ -34,47 +34,48 @@ class XMLADataset(CommonConfig):
     relative_data_path = '/data/structurally-labelled-data/tf-idf/train.dat'
     relative_dev_path = '/data/structurally-labelled-data/tf-idf/dev.dat'
 
-class BaselineConfig(XMLADataset):
-    experiment_name = "lg-lr-0.0001"
-    pretrained = 'embeddings/complete-512.vec'
+def get_baseline_config(data):
+    class BaselineConfig(data):
+        experiment_name = "lg-lr-0.0001"
+        pretrained = 'embeddings/complete-512.vec'
+    return BaselineConfig
 
-class TopicConfig(XMLADataset):
-    use_topics = True
-    pretrained = 'embeddings/complete-512.vec'
-    experiment_name = "lg-with-topics-lr-0.0001"
+def get_topic_config(data):
+    class TopicConfig(data):
+        use_topics = True
+        pretrained = 'embeddings/complete-512.vec'
+        experiment_name = "lg-with-topics-lr-0.0001"
+    return TopicConfig
 
-class LabelConfig(XMLADataset):
-    use_labels = True
-    pretrained = 'embeddings/complete-512.vec'
-    experiment_name = "lg-with-labels-lr-0.0001"
+def get_structure_config(data):
+    class StructureConfig(data):
+        use_labels = True
+        pretrained = 'embeddings/complete-512.vec'
+        experiment_name = "lg-with-labels-lr-0.0001"
+    return StructureConfig
 
-class Label_Topics_Config(XMLADataset):
-    use_topics = True
-    use_labels = True
-    pretrained = 'embeddings/complete-512.vec'
-    experiment_name = "lg-with-labels-and-topics-lr-0.0001"
+def get_structure_and_topic_config(data):
+    class Structure_Topics_Config(data):
+        use_topics = True
+        use_labels = True
+        pretrained = 'embeddings/complete-512.vec'
+        experiment_name = "lg-with-labels-and-topics-lr-0.0001"
+    return Structure_Topics_Config
 
-class Labels_Topics_IntraAttention_Config(XMLADataset):
-    use_topics = True
-    use_labels = True
-    use_intra_attention = True
-    window_size_attention = 5
-    experiment_name = "lg-with-labels-and-tf-idf-lr-0.0001"
-    pretrained = 'embeddings/complete-512.vec'
+def get_structure_topic_and_attention_config(data):
+    class Structure_Topics_IntraAttention_Config(data):
+        use_topics = True
+        use_labels = True
+        use_intra_attention = True
+        window_size_attention = 5
+        experiment_name = "lg-with-labels-and-tf-idf-lr-0.0001"
+        pretrained = 'embeddings/complete-512.vec'
+    return Structure_Topics_IntraAttention_Config
 
-def print_config(config):
-    print("[batch_size = {}, dataparallel = {}, epochs = {}, log_interval = {}, patience = {}, relative_data_path = {}, relative_dev_path = {}, emsize = {},context_dim = {}, learning rate = {}, pretrained = {}, use_topics = {}, use_structure_labels = {}, experiment_name = {}]".format(config.batch_size
-          , config.dataparallel, config.epochs, config.log_interval, config.patience,
-          config.relative_data_path, config.relative_dev_path, config.emsize, config.context_dim,
-          config.lr, config.pretrained, config.use_topics, config.use_labels, config.experiment_name), flush=True)
-
-configuration = {
-                 "b": BaselineConfig(),
-                 "t": TopicConfig(),
-                 "l": LabelConfig(),
-                 "lt": Label_Topics_Config(),
-                 "lti": Labels_Topics_IntraAttention_Config()}
-
-def get_conf(name):
-    print("Config name is {}".format(name))
-    return configuration[name]
+def init(dataset):
+    dataset = XMLADataset if dataset == "xmla" else ACLDataset
+    return {"b": get_baseline_config(dataset),
+            "t": get_topic_config(dataset),
+            "s": get_structure_config(dataset),
+            "st": get_structure_and_topic_config(dataset),
+            "sti": get_structure_topic_and_attention_config(dataset)}
