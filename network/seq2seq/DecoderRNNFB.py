@@ -63,10 +63,10 @@ class DecoderRNNFB(BaseRNN):
         self.embedding = embedding
         self.attention_title = Attention(self.hidden_size)
         self.attention_hidden = Attention(self.hidden_size)
-        #self.fc = nn.Linear(self.hidden_size*2, self.hidden_size)
         self.fc = Gate(self.hidden_size)
         self.use_intra_attention = use_intra_attention
-        self.intra_attention = IntraAttention(self.hidden_size, window_size=intra_attention_window_size)
+        if use_intra_attention:
+            self.intra_attention = IntraAttention(self.hidden_size, window_size=intra_attention_window_size)
         self.out1 = nn.Linear(2 * self.hidden_size if use_intra_attention else self.hidden_size, self.output_size)
 
         # Structural embedding variables requirement during test time
@@ -76,9 +76,6 @@ class DecoderRNNFB(BaseRNN):
 
 
     def forward_step(self, input_var, pg_encoder_states, hidden, encoder_outputs, topical_embedding=None, structural_embedding=None):
-        batch_size = input_var.size(0)
-        output_size = input_var.size(1)
-
         embedded = self.embedding(input_var)
         if topical_embedding is not None:
             embedded = torch.cat([topical_embedding.expand(-1, embedded.shape[1], -1), embedded], dim=2)
@@ -99,9 +96,7 @@ class DecoderRNNFB(BaseRNN):
         if self.use_intra_attention:
             intra_attention = self.intra_attention(output_states)
             output_states_attn = torch.cat([output_states_attn, intra_attention], dim=2)
-        view_dim = 2 * self.hidden_size if self.use_intra_attention else self.hidden_size
-        outputs = self.out1(output_states_attn.view(-1, view_dim)).\
-            view(batch_size, output_size, -1)
+        outputs = self.out1(output_states_attn)
         return outputs, output_states_attn, hidden, attn
 
     def forward(self, inputs=None, encoder_hidden=None, encoder_outputs=None,
