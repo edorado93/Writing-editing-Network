@@ -41,7 +41,7 @@ class DecoderRNNFB(BaseRNN):
 
     def __init__(self, vocab_size, embedding, max_len, embed_size,
                  sos_id, eos_id, n_layers=1, rnn_cell='gru', bidirectional=False,
-                 input_dropout_p=0, dropout_p=0, labels=None, context_model=None,
+                 input_dropout_p=0, dropout_p=0, output_dropout_p=0, labels=None, context_model=None,
                  use_labels=False, use_cuda=False, use_intra_attention=False,
                  intra_attention_window_size=3):
         hidden_size = embed_size
@@ -49,7 +49,7 @@ class DecoderRNNFB(BaseRNN):
             hidden_size *= 2
 
         super(DecoderRNNFB, self).__init__(vocab_size, max_len, hidden_size,
-                input_dropout_p, dropout_p,
+                input_dropout_p, dropout_p, output_dropout_p,
                 n_layers, rnn_cell)
 
         self.labels = labels
@@ -83,9 +83,11 @@ class DecoderRNNFB(BaseRNN):
             embedded = torch.cat((embedded, structural_embedding), dim=2)
         embedded = self.input_dropout(embedded)
 
-        attn = None
-
         output_states, hidden = self.rnn(embedded, hidden)
+
+        output_states = self.output_dropout(output_states)
+
+        attn = None
         output_states_attn1, attn1 = self.attention_title(output_states, encoder_outputs)
         if pg_encoder_states is None:
             output_states_attn = output_states_attn1

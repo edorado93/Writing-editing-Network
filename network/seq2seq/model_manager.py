@@ -90,14 +90,17 @@ class ModelManager:
                             "question_mark": training_abstracts.vectorizer.word2idx["?"]}
 
         encoder_title = EncoderRNN(vocab_size, embedding, training_abstracts.head_len, title_encoder_rnn_dim,
-                                   abstract_encoder_rnn_dim, input_dropout_p=config.dropout,
-                                   n_layers=config.nlayers, bidirectional=config.bidirectional, rnn_cell=config.cell)
+                                   abstract_encoder_rnn_dim, input_dropout_p=config.input_dropout_p, output_dropout_p=config.output_dropout_p,
+                                   n_layers=config.nlayers, bidirectional=config.bidirectional,
+                                   rnn_cell=config.cell)
         encoder = EncoderRNN(vocab_size, embedding, training_abstracts.abs_len, abstract_encoder_rnn_dim,
-                             abstract_encoder_rnn_dim, input_dropout_p=config.dropout, variable_lengths=False,
-                             n_layers=config.nlayers, bidirectional=config.bidirectional, rnn_cell=config.cell)
+                             abstract_encoder_rnn_dim, input_dropout_p=config.input_dropout_p, output_dropout_p=config.output_dropout_p,
+                             variable_lengths=False, n_layers=config.nlayers,
+                             bidirectional=config.bidirectional, rnn_cell=config.cell)
         decoder = DecoderRNNFB(vocab_size, embedding, training_abstracts.abs_len, abstract_encoder_rnn_dim, sos_id=2, eos_id=1,
                                n_layers=config.nlayers, rnn_cell=config.cell, bidirectional=config.bidirectional,
-                               input_dropout_p=config.dropout, dropout_p=config.dropout, labels=structure_labels,
+                               input_dropout_p=config.input_dropout_p, dropout_p=config.dropout_p,
+                               output_dropout_p=config.output_dropout_p, labels=structure_labels,
                                use_labels=config.use_labels, context_model=context_encoder, use_cuda=args.cuda,
                                use_intra_attention=config.use_intra_attention,
                                intra_attention_window_size=config.window_size_attention)
@@ -106,8 +109,13 @@ class ModelManager:
         if args.local_rank == 0:
             print("Configuration is as follows", json.dumps({"training data path": config.relative_data_path,
                                                              "validation data path": config.relative_dev_path,
-                                                            "training batch size": config.batch_size,
+                                                             "training batch size": config.batch_size,
+                                                             "word embedding dim": config.emsize,
+                                                             "context embedding dim": config.context_dim,
                                                              "validation batch size": config.validation_batch_size,
+                                                             "input dropout": config.input_dropout_p,
+                                                             "dropout": config.dropout_p,
+                                                             "output dropout": config.output_dropout_p,
                                                              "data parallel": config.data_parallel,
                                                              "distributed data parallel": config.distributed_data_parallel,
                                                              "log_interval": config.log_interval,
