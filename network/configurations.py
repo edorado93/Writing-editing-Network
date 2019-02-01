@@ -5,7 +5,9 @@ class CommonConfig(object):
     validation_batch_size = 32
     data_parallel = False
     distributed_data_parallel = False
-    dropout = 0
+    input_dropout_p = 0
+    dropout_p = 0
+    output_dropout_p = 0
     epochs = 20
     bidirectional = True
     max_grad_norm = 10
@@ -14,9 +16,6 @@ class CommonConfig(object):
     log_interval = 50
     patience = 5
     print_running_loss = False
-
-    #Common Configuration that is usually played with.
-    # Will remain the same unless overridden
     emsize = 512
     context_dim = 128
     lr = 0.0001
@@ -29,10 +28,12 @@ class CommonConfig(object):
 class ACLDataset(CommonConfig):
     relative_data_path = '/data/acl/train.dat'
     relative_dev_path = '/data/acl/dev.dat'
+    relative_test_path = '/data/acl/test.dat'
 
 class XMLADataset(CommonConfig):
     relative_data_path = '/data/structurally-labelled-data/tf-idf/train.dat'
     relative_dev_path = '/data/structurally-labelled-data/tf-idf/dev.dat'
+    relative_test_path = '/data/structurally-labelled-data/tf-idf/test.dat'
 
 def get_baseline_config(data):
     class BaselineConfig(data):

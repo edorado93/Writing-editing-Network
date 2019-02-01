@@ -376,7 +376,7 @@ if __name__ == "__main__":
         else:
             print_candidate = cand[2]
 
-        with open("BLEU-4={}_generated.txt".format(best_bleu), "w") as f:
+        with open("BLEU-4={}_generated.txt".format(round(best_bleu, 3)), "w") as f:
             for o, g in zip(org, print_candidate):
 
                 # Ref is a dictionary of lists where the list contains just one element

@@ -7,10 +7,10 @@ from .baseRNN import BaseRNN
 
 class EncoderRNN(BaseRNN):
     def __init__(self, vocab_size, embedding, max_len, input_length, hidden_size,
-                input_dropout_p=0, dropout_p=0, n_layers=1,
+                input_dropout_p=0, dropout_p=0, output_dropout_p=0, n_layers=1,
                 bidirectional=False, rnn_cell='gru', variable_lengths=True): 
         super(EncoderRNN, self).__init__(vocab_size, max_len, hidden_size,
-                input_dropout_p, dropout_p, n_layers, rnn_cell)
+                input_dropout_p, dropout_p, output_dropout_p, n_layers, rnn_cell)
 
         self.variable_lengths = variable_lengths
         self.embedding = embedding
@@ -33,5 +33,5 @@ class EncoderRNN(BaseRNN):
         output, hidden = self.rnn(embedded)
         if self.variable_lengths:
             output, _ = nn.utils.rnn.pad_packed_sequence(output, batch_first=True)
-
+        output = self.output_dropout(output)
         return output, hidden
