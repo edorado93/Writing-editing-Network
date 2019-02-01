@@ -127,12 +127,12 @@ class DecoderRNNFB(BaseRNN):
             generated_structure_labels = []
             lengths = np.array([max_length] * batch_size)
 
-            # 30 percent of the times select a random word, otherwise
+            # 10 percent of the times select a random word, otherwise
             # select a word that doesn't occur in the last window of 5 words. This
             # if to avoid repetition and introduce some randomness.
             def penalise_repetitions(step_output):
                 output = []
-                if random.random() < 0.3:
+                if random.random() < 0.1:
                     word_weights = step_output.squeeze().data.div(1.).exp().cpu()
                     word_idx = torch.multinomial(word_weights, 1)
                     return word_idx.view(step_output.shape[0], 1).cuda() if self.use_cuda else word_idx.view(step_output.shape[0], 1)
