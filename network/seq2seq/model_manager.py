@@ -83,9 +83,9 @@ class ModelManager:
         abstract_encoder_rnn_dim = config.emsize + (
                     config.use_labels + config.use_topics * training_abstracts.max_context_length) * config.context_dim
 
-        structure_labels = {"introduction": training_abstracts.vectorizer.context_vectorizer["introduction"],
-                            "body": training_abstracts.vectorizer.context_vectorizer["body"],
-                            "conclusion": training_abstracts.vectorizer.context_vectorizer["conclusion"],
+        structure_labels = {"introduction": training_abstracts.vectorizer.structural_vectorizer["introduction"],
+                            "body": training_abstracts.vectorizer.structural_vectorizer["body"],
+                            "conclusion": training_abstracts.vectorizer.structural_vectorizer["conclusion"],
                             "full_stop": training_abstracts.vectorizer.word2idx["."],
                             "question_mark": training_abstracts.vectorizer.word2idx["?"]}
 

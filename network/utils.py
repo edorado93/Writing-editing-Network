@@ -61,6 +61,7 @@ class Vectorizer:
         self.min_frequency = min_frequency
         self.start_end_tokens = start_end_tokens
         self.context_vectorizer = {}
+        self.structural_vectorizer = {"introduction": 0, "body": 1, "conclusion": 2}
 
     def topics_to_index_tensor(self, topics):
         vec = [self.context_vectorizer[t] if t in self.context_vectorizer else self.context_vectorizer["algorithm"] for t in topics]
@@ -208,9 +209,6 @@ class headline2abstractdataset(Dataset):
                     labels.append(j["labels"])
                 i += 1
         self.vectorizer.context_vectorizer['algorithm'] = 0
-        self.vectorizer.context_vectorizer['introduction'] = 1
-        self.vectorizer.context_vectorizer['body'] = 2
-        self.vectorizer.context_vectorizer['conclusion'] = 3
         corpus = self._read_data(headlines, abstracts)
         topics_v = self._read_topics(topics)
         abstract_structures = self._read_structure(labels)
@@ -257,10 +255,10 @@ class headline2abstractdataset(Dataset):
     def _read_structure(self, structure_info):
         structure = []
         for i in range(len(structure_info)):
-            tokenised = [self.vectorizer.context_vectorizer[s] for s in structure_info[i]]
+            tokenised = [self.vectorizer.structural_vectorizer[s] for s in structure_info[i]]
             if self.vectorizer.start_end_tokens:
-                tokenised.append(self.vectorizer.context_vectorizer['conclusion'])
-            tokenised = [self.vectorizer.context_vectorizer['introduction']] + tokenised
+                tokenised.append(self.vectorizer.structural_vectorizer['conclusion'])
+                tokenised = [self.vectorizer.structural_vectorizer['introduction']] + tokenised
             structure.append(tokenised)
 
         return structure
