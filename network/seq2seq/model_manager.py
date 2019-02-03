@@ -77,11 +77,11 @@ class ModelManager:
             embedding = load_embeddings(embedding, training_abstracts.vectorizer.word2idx, config.pretrained, config.emsize)
 
         if config.use_topics or config.use_labels:
-            context_encoder = ContextEncoder(config.context_dim, len(training_abstracts.vectorizer.context_vectorizer), config.emsize)
+            context_encoder = ContextEncoder(config.context_dim, len(training_abstracts.vectorizer.context_vectorizer))
 
         title_encoder_rnn_dim = config.emsize + (config.use_topics * training_abstracts.max_context_length) * config.context_dim
-        abstract_encoder_rnn_dim = config.emsize + (
-                    config.use_labels + config.use_topics * training_abstracts.max_context_length) * config.context_dim
+        # Word embedding dim + (No. of topics * topical dim) + Structural embedding dim = 2
+        abstract_encoder_rnn_dim = config.emsize + (config.use_topics * training_abstracts.max_context_length) * config.context_dim + 2
 
         structure_labels = {"introduction": training_abstracts.vectorizer.structural_vectorizer["introduction"],
                             "body": training_abstracts.vectorizer.structural_vectorizer["body"],

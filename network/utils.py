@@ -186,7 +186,7 @@ class headline2abstractdataset(Dataset):
             if self.use_topics:
                 contextual_dictionary["topics"] = self.pad_sentence_vector(contextual_dictionary["topics"], self.max_context_length, pad_value=self.vectorizer.context_vectorizer['algorithm'])
             if self.use_structure_info:
-                contextual_dictionary["structure"] = self.pad_sentence_vector(contextual_dictionary["structure"], self.abs_len, pad_value=3)
+                contextual_dictionary["structure"] = self.pad_sentence_vector(contextual_dictionary["structure"], self.abs_len, pad_value=self.vectorizer.structural_vectorizer["conclusion"])
             team = [len(source), len(target), self.pad_sentence_vector(source, self.head_len), self.pad_sentence_vector(target, self.abs_len), contextual_dictionary, original_index]
             corpus.append(team)
         self.data = corpus
