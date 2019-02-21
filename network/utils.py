@@ -143,6 +143,7 @@ class headline2abstractdataset(Dataset):
         self.max_len = max_len
         self.max_context_length = 1
         self.untokenized_original = {}
+        self.first_words = []
         self.vectorizer = vectorizer
         self.corpus, self.topics_corpus, self.abstract_structures = self._read_corpus(path)
         self.data = self._vectorize_corpus()
@@ -196,6 +197,12 @@ class headline2abstractdataset(Dataset):
         topics = []
         labels = []
         i = 0
+
+        with open("static/first_words.txt") as f:
+            import ast
+            for line in f:
+                self.first_words = ast.literal_eval(line)
+
         with open(path, encoding="utf-8") as f:
             for line in f:
                 j = json.loads(line)

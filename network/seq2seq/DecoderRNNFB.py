@@ -43,7 +43,7 @@ class DecoderRNNFB(BaseRNN):
                  sos_id, eos_id, n_layers=1, rnn_cell='gru', bidirectional=False,
                  input_dropout_p=0, dropout_p=0, output_dropout_p=0, labels=None, context_model=None,
                  use_labels=False, use_cuda=False, use_intra_attention=False,
-                 intra_attention_window_size=3):
+                 intra_attention_window_size=3, first_words=None):
         hidden_size = embed_size
         if bidirectional:
             hidden_size *= 2
@@ -73,7 +73,7 @@ class DecoderRNNFB(BaseRNN):
         self.context_model = context_model
         self.use_labels = use_labels
         self.use_cuda = use_cuda
-
+        self.first_words = first_words
 
     def forward_step(self, input_var, pg_encoder_states, hidden, encoder_outputs, topical_embedding=None, structural_embedding=None):
         embedded = self.embedding(input_var)
@@ -127,11 +127,29 @@ class DecoderRNNFB(BaseRNN):
             generated_structure_labels = []
             lengths = np.array([max_length] * batch_size)
 
+            def sample_first_word(step_output):
+                word_weights = step_output.squeeze().data.div(1.).exp().cpu()
+                batch_size = word_weights.size()[0]
+                sampled_first_words = []
+                for i in range(batch_size):
+                    first_word_distrib = [word_weights[i][f] for f in self.first_words]
+                    Z = max(first_word_distrib)
+                    first_word_distrib_renorm = list(map(lambda x: x / Z, first_word_distrib))
+                    word_idx = torch.multinomial(first_word_distrib_renorm, 1)
+                    sampled_first_words.append(word_idx)
+                sampled_first_words = torch.LongTensor(sampled_first_words)
+                return sampled_first_words if not self.use_cuda else sampled_first_words.cuda()
+
             # 10 percent of the times select a random word, otherwise
             # select a word that doesn't occur in the last window of 5 words. This
             # if to avoid repetition and introduce some randomness.
             def penalise_repetitions(step_output):
                 output = []
+
+                # Need to sample the first word
+                if len(sequence_symbols) == 1:
+                    return sample_first_word(step_output)
+
                 if random.random() < 0.1:
                     word_weights = step_output.squeeze().data.div(1.).exp().cpu()
                     word_idx = torch.multinomial(word_weights, 1)

@@ -73,6 +73,11 @@ class ModelManager:
         vocab_size = len(training_abstracts.vectorizer.word2idx)
         embedding = nn.Embedding(vocab_size, config.emsize, padding_idx=0)
 
+        first_words = []
+        for w in training_abstracts.first_words:
+            if w in training_abstracts.vectorizer.word2idx:
+                first_words.append(training_abstracts.vectorizer.word2idx[w])
+
         if config.pretrained:
             embedding = load_embeddings(embedding, training_abstracts.vectorizer.word2idx, config.pretrained, config.emsize)
 
@@ -103,7 +108,7 @@ class ModelManager:
                                output_dropout_p=config.output_dropout_p, labels=structure_labels,
                                use_labels=config.use_labels, context_model=context_encoder, use_cuda=args.cuda,
                                use_intra_attention=config.use_intra_attention,
-                               intra_attention_window_size=config.window_size_attention)
+                               intra_attention_window_size=config.window_size_attention,first_words=first_words)
         model = FbSeq2seq(encoder_title, encoder, context_encoder, decoder)
         total_params = sum(x.size()[0] * x.size()[1] if len(x.size()) > 1 else x.size()[0] for x in model.parameters())
         if args.local_rank == 0:
