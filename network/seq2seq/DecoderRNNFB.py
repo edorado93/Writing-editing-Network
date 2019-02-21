@@ -135,9 +135,12 @@ class DecoderRNNFB(BaseRNN):
                     first_word_distrib = [word_weights[i][f] for f in self.first_words]
                     Z = max(first_word_distrib)
                     first_word_distrib_renorm = list(map(lambda x: x / Z, first_word_distrib))
+                    first_word_distrib_renorm = torch.FloatTensor(first_word_distrib_renorm)
+                    if self.use_cuda:
+                        first_word_distrib_renorm = first_word_distrib_renorm.cuda()
                     word_idx = torch.multinomial(first_word_distrib_renorm, 1)
-                    sampled_first_words.append(word_idx)
-                sampled_first_words = torch.LongTensor(sampled_first_words)
+                    sampled_first_words.append(self.first_words[word_idx])
+                sampled_first_words = torch.LongTensor(sampled_first_words).view(batch_size, 1)
                 return sampled_first_words if not self.use_cuda else sampled_first_words.cuda()
 
             # 10 percent of the times select a random word, otherwise
@@ -147,7 +150,7 @@ class DecoderRNNFB(BaseRNN):
                 output = []
 
                 # Need to sample the first word
-                if len(sequence_symbols) == 1:
+                if len(sequence_symbols) == 0:
                     return sample_first_word(step_output)
 
                 if random.random() < 0.1:
